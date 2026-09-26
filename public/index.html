@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Peluquería Raquel | Colorimetría, Novias & Estilismo Profesional</title>
+  <meta name="description" content="Agenda tu cita online, descubre promociones exclusivas, paquetes de novia y cursos de belleza profesional con Raquel.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <header class="navbar">
+    <div class="nav-container">
+      <a href="#" class="brand-logo" onclick="cambiarVista('cliente')">
+        <span class="logo-sparkle">✨</span>
+        <div class="logo-text">
+          <span class="logo-title">Raquel</span>
+          <span class="logo-sub">Studio & Belleza</span>
+        </div>
+      </a>
+
+      <nav class="nav-links">
+        <a href="#promociones" class="nav-link client-nav">Promociones</a>
+        <a href="#paquetes" class="nav-link client-nav">Bodas & Eventos</a>
+        <a href="#servicios" class="nav-link client-nav">Servicios</a>
+        <a href="#galeria" class="nav-link client-nav">Portafolio</a>
+        <a href="#cursos" class="nav-link client-nav">Cursos Hotmart</a>
+      </nav>
+
+      <div class="nav-actions">
+        <button class="btn btn-primary client-nav" onclick="abrirModalReserva()">
+          📅 Reservar Cita
+        </button>
+        <button id="btnSwitchVista" class="btn btn-outline" onclick="toggleModoAdmin()">
+          🔐 Panel de Raquel
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============================================== -->
+  <!-- VISTA 1: CLIENTES (PÚBLICA)                     -->
+  <!-- ============================================== -->
+  <main id="vistaCliente" class="vista-seccion active">
+
+    <!-- HERO BANNER -->
+    <section class="hero-section">
+      <div class="hero-overlay"></div>
+      <div class="hero-content">
+        <div class="hero-badge">✨ Experta en Colorimetría & Novias</div>
+        <h1 class="hero-title">Realza tu belleza única con un toque <span class="text-gradient">profesional</span></h1>
+        <p class="hero-subtitle">
+          Diseños de color personalizados, tratamientos capilares orgánicos, paquetes exclusivos para novias y formación profesional en belleza.
+        </p>
+        <div class="hero-cta-group">
+          <button class="btn btn-primary btn-lg" onclick="abrirModalReserva()">
+            ✨ Agendar mi Cita Online
+          </button>
+          <a href="#promociones" class="btn btn-secondary btn-lg">
+            🏷️ Ver Promociones del Mes
+          </a>
+        </div>
+        <div class="hero-stats">
+          <div class="stat-item">
+            <span class="stat-number">+10</span>
+            <span class="stat-label">Años de Experiencia</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-number">100%</span>
+            <span class="stat-label">Productos Premium</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-number">⭐ 4.9</span>
+            <span class="stat-label">Satisfacción de Clientas</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PROMOCIONES DEL MES -->
+    <section id="promociones" class="section-container">
+      <div class="section-header">
+        <span class="section-tag">Descuentos Especiales</span>
+        <h2 class="section-title">Promociones Activas del Mes 🎁</h2>
+        <p class="section-desc">Aprovecha precios especiales reservando tu cita directamente desde nuestra página.</p>
+      </div>
+      <div id="gridPromociones" class="grid-promociones">
+        <!-- Renderizado dinámico desde BD -->
+        <div class="skeleton-card"></div>
+        <div class="skeleton-card"></div>
+      </div>
+    </section>
+
+    <!-- PAQUETES DE BODAS Y QUINCEAÑERAS -->
+    <section id="paquetes" class="section-container bg-subtle">
+      <div class="section-header">
+        <span class="section-tag">Momentos Inolvidables</span>
+        <h2 class="section-title">Paquetes para Bodas & Quinceañeras 👰👑</h2>
+        <p class="section-desc">Atención VIP y personalizada para que luzcas radiante en el día más especial de tu vida.</p>
+      </div>
+      <div id="gridPaquetes" class="grid-paquetes">
+        <!-- Renderizado dinámico desde BD -->
+      </div>
+    </section>
+
+    <!-- CATÁLOGO DE SERVICIOS Y TIEMPOS -->
+    <section id="servicios" class="section-container">
+      <div class="section-header">
+        <span class="section-tag">Menú de Atención</span>
+        <h2 class="section-title">Nuestros Servicios & Horarios 💇‍♀️</h2>
+        <p class="section-desc">Cada servicio cuenta con un tiempo dedicado exclusivo para ti sin prisas ni demoras.</p>
+      </div>
+      <div class="filtros-categoria">
+        <button class="btn-filtro active" onclick="filtrarServicios('todos')">Todos</button>
+        <button class="btn-filtro" onclick="filtrarServicios('colorimetria')">Colorimetría</button>
+        <button class="btn-filtro" onclick="filtrarServicios('corte')">Cortes</button>
+        <button class="btn-filtro" onclick="filtrarServicios('tratamiento')">Tratamientos / Alisados</button>
+        <button class="btn-filtro" onclick="filtrarServicios('pestanas_cejas')">Pestañas & Cejas</button>
+      </div>
+      <div id="gridServicios" class="grid-servicios">
+        <!-- Renderizado dinámico desde BD -->
+      </div>
+    </section>
+
+    <!-- PORTAFOLIO / GALERÍA DE TRABAJOS -->
+    <section id="galeria" class="section-container bg-subtle">
+      <div class="section-header">
+        <span class="section-tag">Resultados Reales</span>
+        <h2 class="section-title">Portafolio de Trabajos 📸</h2>
+        <p class="section-desc">Explora algunas de las transformaciones, peinados y alisados creados por Raquel.</p>
+      </div>
+      <div id="gridGaleria" class="grid-galeria">
+        <!-- Renderizado dinámico desde BD -->
+      </div>
+    </section>
+
+    <!-- CURSOS ONLINE (HOTMART) -->
+    <section id="cursos" class="section-container">
+      <div class="section-header">
+        <span class="section-tag">Aprende con Raquel</span>
+        <h2 class="section-title">Cursos Digitales & Masterclasses 🎓</h2>
+        <p class="section-desc">Capacítate desde cualquier lugar del mundo con nuestros cursos certificados en Hotmart.</p>
+      </div>
+      <div id="gridCursos" class="grid-cursos">
+        <!-- Renderizado dinámico desde BD -->
+      </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+      <div class="footer-container">
+        <div class="footer-brand">
+          <h3>Raquel Studio & Belleza</h3>
+          <p>Tu espacio de confianza para el cuidado capilar, colorimetría avanzada y estilismo de bodas.</p>
+        </div>
+        <div class="footer-contact">
+          <h4>Contacto & Citas</h4>
+          <p>📍 Atención en local previa cita</p>
+          <p>💬 WhatsApp directo para consultas rápidas</p>
+          <button class="btn btn-whatsapp btn-sm" onclick="abrirModalReserva()">
+            📲 Agendar Cita Online
+          </button>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>© 2026 Peluquería Raquel. Todos los derechos reservados.</p>
+      </div>
+    </footer>
+  </main>
+
+  <!-- ============================================== -->
+  <!-- VISTA 2: PANEL DE CONTROL DE RAQUEL (ADMIN)     -->
+  <!-- ============================================== -->
+  <main id="vistaAdmin" class="vista-seccion">
+    <div class="admin-wrapper">
+
+      <aside class="admin-sidebar">
+        <div class="admin-profile">
+          <div class="admin-avatar">👩‍💼</div>
+          <div class="admin-name">Raquel</div>
+          <div class="admin-role">Administradora</div>
+        </div>
+
+        <nav class="admin-menu">
+          <button class="admin-nav-item active" onclick="cambiarSubtabAdmin('agenda')">
+            📅 Agenda de Citas
+          </button>
+          <button class="admin-nav-item" onclick="cambiarSubtabAdmin('promociones')">
+            🎁 Crear Promoción
+          </button>
+          <button class="admin-nav-item" onclick="cambiarSubtabAdmin('portafolio')">
+            📸 Subir al Portafolio
+          </button>
+          <button class="admin-nav-item" onclick="cambiarSubtabAdmin('calculadora')">
+            🧮 Calculadora de Tintes
+          </button>
+          <button class="admin-nav-item" onclick="cambiarSubtabAdmin('gastos')">
+            💵 Registro de Gastos
+          </button>
+        </nav>
+
+        <div class="admin-sidebar-footer">
+          <button class="btn btn-outline btn-block" onclick="cambiarVista('cliente')">
+            ⬅️ Volver a la Web
+          </button>
+        </div>
+      </aside>
+
+      <div class="admin-main-content">
+
+        <!-- SUBTAB 1: AGENDA DE CITAS Y CONTROL DE TIEMPOS -->
+        <section id="subtab-agenda" class="subtab-content active">
+          <div class="tab-header">
+            <div>
+              <h2>📅 Agenda de Citas & Horarios</h2>
+              <p>Revisa las reservas de tus clientas, confirma turnos y gestiona los tiempos de tu día.</p>
+            </div>
+            <div class="tab-controls">
+              <input type="date" id="filtroFechaCitas" class="input-field" onchange="cargarCitasAdmin()">
+              <button class="btn btn-secondary" onclick="cargarCitasAdmin()">🔄 Actualizar</button>
+            </div>
+          </div>
+
+          <div id="listaCitasAdmin" class="citas-container">
+            <!-- Citas cargadas dinámicamente -->
+            <p class="text-muted">Cargando agenda de citas...</p>
+          </div>
+        </section>
+
+        <!-- SUBTAB 2: CREADOR DE PROMOCIONES -->
+        <section id="subtab-promociones" class="subtab-content">
+          <div class="tab-header">
+            <div>
+              <h2>🎁 Publicar Nueva Promoción del Mes</h2>
+              <p>Aparecerá automáticamente en la página web para que las clientas reserven con descuento.</p>
+            </div>
+          </div>
+
+          <form id="formNuevaPromo" class="admin-form-card" onsubmit="guardarPromocion(event)">
+            <div class="form-group">
+              <label>Título de la Promoción *</label>
+              <input type="text" id="promoTitulo" class="input-field" placeholder="Ej: 20% OFF en Alisados de Martes a Jueves" required>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>% de Descuento (opcional)</label>
+                <input type="number" id="promoPorcentaje" class="input-field" min="1" max="100" placeholder="Ej: 20">
+              </div>
+              <div class="form-group">
+                <label>O Monto Fijo de Descuento ($)</label>
+                <input type="number" id="promoMonto" class="input-field" step="0.5" placeholder="Ej: 15.00">
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>Fecha de Inicio</label>
+                <input type="date" id="promoInicio" class="input-field" required>
+              </div>
+              <div class="form-group">
+                <label>Fecha de Fin (Vigencia) *</label>
+                <input type="date" id="promoFin" class="input-field" required>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Descripción detallada</label>
+              <textarea id="promoDesc" class="input-field" rows="3" placeholder="Explica las condiciones de la promo..."></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-lg">
+              🚀 Publicar Promoción en la Web
+            </button>
+          </form>
+        </section>
+
+        <!-- SUBTAB 3: SUBIR AL PORTAFOLIO -->
+        <section id="subtab-portafolio" class="subtab-content">
+          <div class="tab-header">
+            <div>
+              <h2>📸 Subir Foto de Trabajo Realizado</h2>
+              <p>Muestra tus resultados para atraer más clientas en la web.</p>
+            </div>
+          </div>
+
+          <form id="formNuevaFoto" class="admin-form-card" onsubmit="guardarFotoGaleria(event)">
+            <div class="form-group">
+              <label>Título del Trabajo *</label>
+              <input type="text" id="fotoTitulo" class="input-field" placeholder="Ej: Balayage Miel Caramelo" required>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Categoría</label>
+                <select id="fotoCategoria" class="input-field">
+                  <option value="Colorimetría">Colorimetría</option>
+                  <option value="Novias">Novias & Quinceañeras</option>
+                  <option value="Alisados">Alisados / Tratamientos</option>
+                  <option value="Cortes">Cortes & Peinados</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>URL de la Foto *</label>
+                <input type="url" id="fotoUrl" class="input-field" placeholder="https://..." required>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Descripción breve</label>
+              <input type="text" id="fotoDesc" class="input-field" placeholder="Ej: Decoloración suave + matiz cálido con brillo...">
+            </div>
+            <button type="submit" class="btn btn-primary">
+              📸 Publicar en la Galería
+            </button>
+          </form>
+        </section>
+
+        <!-- SUBTAB 4: CALCULADORA DE COLORIMETRÍA -->
+        <section id="subtab-calculadora" class="subtab-content">
+          <div class="tab-header">
+            <div>
+              <h2>🧮 Calculadora de Precios de Colorimetría</h2>
+              <p>Calcula el precio justo a cobrar multiplicando materiales x3 + mano de obra.</p>
+            </div>
+          </div>
+
+          <div class="admin-calc-grid">
+            <div class="admin-form-card">
+              <h3>Insumos Utilizados:</h3>
+              <div class="calc-input-group">
+                <label>Porciones de Decolorante (1/4 pote c/u)</label>
+                <input type="number" id="calcDecolorante" class="input-field" value="2" min="0" oninput="ejecutarCalculoTintes()">
+              </div>
+              <div class="calc-input-group">
+                <label>Tubos de Tinte completos</label>
+                <input type="number" id="calcTinte" class="input-field" value="1" min="0" oninput="ejecutarCalculoTintes()">
+              </div>
+              <div class="calc-input-group">
+                <label>Mezclas de Peróxido</label>
+                <input type="number" id="calcPeroxido" class="input-field" value="2" min="0" oninput="ejecutarCalculoTintes()">
+              </div>
+              <div class="calc-input-group">
+                <label>Horas de Trabajo Dedicadas</label>
+                <input type="number" id="calcHoras" class="input-field" value="3" min="0" oninput="ejecutarCalculoTintes()">
+              </div>
+            </div>
+
+            <div class="calc-result-card">
+              <span class="badge-tag">Precio Recomendado</span>
+              <div class="calc-big-price" id="calcPrecioFinal">$79.50</div>
+              <p id="calcMensaje" class="calc-submsg">💰 Debes cobrar este valor por el servicio.</p>
+              <div class="calc-desglose-box" id="calcDesglose">
+                <!-- Desglose dinámico -->
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- SUBTAB 5: GASTOS -->
+        <section id="subtab-gastos" class="subtab-content">
+          <div class="tab-header">
+            <div>
+              <h2>💵 Registro Diario de Gastos</h2>
+              <p>Anota arriendo, insumos, compras de comida y transporte para cuadrar caja.</p>
+            </div>
+          </div>
+
+          <form id="formGasto" class="admin-form-card" onsubmit="guardarGasto(event)">
+            <div class="form-row">
+              <div class="form-group">
+                <label>Monto ($) *</label>
+                <input type="number" id="gastoMonto" class="input-field" step="0.25" placeholder="Ej: 25.00" required>
+              </div>
+              <div class="form-group">
+                <label>Categoría *</label>
+                <select id="gastoCategoria" class="input-field" required>
+                  <option value="productos">Insumos / Productos</option>
+                  <option value="arriendo">Arriendo</option>
+                  <option value="servicios">Servicios Básicos (Luz/Agua)</option>
+                  <option value="comida">Comida / Almuerzos</option>
+                  <option value="transporte">Transporte / Pasajes</option>
+                  <option value="otros">Otros</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Concepto / Detalle (Opcional)</label>
+              <input type="text" id="gastoConcepto" class="input-field" placeholder="Ej: Compra de champú neutralizante">
+            </div>
+            <button type="submit" class="btn btn-primary">
+              💾 Registrar Gasto
+            </button>
+          </form>
+
+          <div class="gastos-list-card">
+            <h3>Últimos Gastos Registrados</h3>
+            <div id="listaGastosAdmin">
+              <p class="text-muted">Cargando gastos...</p>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- ============================================== -->
+  <!-- MODAL DE RESERVA DE CITAS (CLIENTES)            -->
+  <!-- ============================================== -->
+  <div id="modalReserva" class="modal-backdrop">
+    <div class="modal-dialog">
+      <button class="modal-close" onclick="cerrarModalReserva()">&times;</button>
+      
+      <div class="modal-header">
+        <span class="modal-icon">📅</span>
+        <h3>Agenda tu Cita con Raquel</h3>
+        <p>Elige tu servicio y horario ideal. Te confirmamos de inmediato.</p>
+      </div>
+
+      <form id="formReservaCita" onsubmit="procesarReservaCita(event)">
+        <!-- 1. Servicio -->
+        <div class="form-group">
+          <label>1. Elige el Servicio o Paquete *</label>
+          <select id="reservaServicioId" class="input-field" onchange="actualizarCalculoReserva()" required>
+            <option value="">-- Selecciona un servicio --</option>
+          </select>
+        </div>
+
+        <!-- 2. Promoción opcional -->
+        <div class="form-group" id="grupoPromoReserva">
+          <label>2. ¿Tienes una Promoción Activa?</label>
+          <select id="reservaPromoId" class="input-field" onchange="actualizarCalculoReserva()">
+            <option value="">Sin promoción (Precio estándar)</option>
+          </select>
+        </div>
+
+        <!-- 3. Fecha y Hora -->
+        <div class="form-row">
+          <div class="form-group">
+            <label>3. Fecha deseada *</label>
+            <input type="date" id="reservaFecha" class="input-field" onchange="cargarHorasDisponibles()" required>
+          </div>
+          <div class="form-group">
+            <label>Hora de inicio *</label>
+            <select id="reservaHora" class="input-field" required>
+              <option value="09:00">09:00 AM</option>
+              <option value="10:00">10:00 AM</option>
+              <option value="11:00">11:00 AM</option>
+              <option value="14:00">02:00 PM</option>
+              <option value="15:00">03:00 PM</option>
+              <option value="16:00">04:00 PM</option>
+              <option value="17:00">05:00 PM</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 4. Datos del Cliente -->
+        <div class="form-row">
+          <div class="form-group">
+            <label>Tu Nombre Completo *</label>
+            <input type="text" id="reservaClienteNombre" class="input-field" placeholder="Ej: Laura Morales" required>
+          </div>
+          <div class="form-group">
+            <label>WhatsApp / Celular *</label>
+            <input type="tel" id="reservaClienteTelefono" class="input-field" placeholder="Ej: 0991234567" required>
+          </div>
+        </div>
+
+        <!-- Resumen de Costo -->
+        <div class="reserva-resumen-box">
+          <div class="resumen-row">
+            <span>Duración estimada:</span>
+            <strong id="resumenDuracion">-- min</strong>
+          </div>
+          <div class="resumen-row">
+            <span>Total a pagar:</span>
+            <strong id="resumenPrecio" class="precio-destacado">$0.00</strong>
+          </div>
+        </div>
+
+        <button type="submit" id="btnConfirmarReserva" class="btn btn-primary btn-block btn-lg">
+          ✅ Confirmar Reserva y Abrir WhatsApp
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICACIONES -->
+  <div id="toastNotification" class="toast-box"></div>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>

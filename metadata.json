@@ -1,0 +1,6 @@
+{
+  "name": "Bella Hair Studio Suite",
+  "description": "Suite de gestión y cotizador interactivo para salón de belleza y spa, con tarifario dinámico, agenda de citas, promociones exclusivas y directorio de clientes.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
