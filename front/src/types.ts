@@ -136,6 +136,7 @@ export interface CursoItem {
   titulo: string;
   descripcion: string;
   precio_referencia: number;
+  precio?: number;
   imagen_url?: string | null;
   link_hotmart: string;
   activo: boolean;

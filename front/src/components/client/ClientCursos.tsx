@@ -92,7 +92,7 @@ export const ClientCursos: React.FC = () => {
                     <div>
                       <span className="text-[10px] text-[#515f74] uppercase block font-semibold">Inversión</span>
                       <span className="text-2xl font-serif font-bold text-[#b10e6b]">
-                        ${Number(c.precio).toFixed(2)}
+                        ${Number(c.precio ?? c.precio_referencia ?? 0).toFixed(2)}
                       </span>
                     </div>
                   </div>
