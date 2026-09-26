@@ -19,9 +19,11 @@ import { Cita, ReporteFinanciero } from '../types';
 interface DashboardViewProps {
   reporte: ReporteFinanciero | null;
   citas: Cita[];
+  promociones?: any[];
   onOpenNewAppointment: () => void;
-  onNavigateToTab: (tab: any) => void;
-  onShowToast: (message: string) => void;
+  onNavigateToTab?: (tab: any) => void;
+  onNavigate?: (tab: any) => void;
+  onShowToast?: (message: string) => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({

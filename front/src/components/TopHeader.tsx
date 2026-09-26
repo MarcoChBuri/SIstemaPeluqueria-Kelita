@@ -4,7 +4,8 @@ import { Search, Bell, Plus } from 'lucide-react';
 interface TopHeaderProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
-  onOpenNewAppointment: () => void;
+  onOpenNewAppointment?: () => void;
+  onNewAppointmentClick?: () => void;
   unreadAlertsCount?: number;
   onOpenNotifications?: () => void;
 }
@@ -13,9 +14,11 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   searchQuery,
   onSearchChange,
   onOpenNewAppointment,
+  onNewAppointmentClick,
   unreadAlertsCount = 0,
   onOpenNotifications,
 }) => {
+  const handleOpenAppointment = onOpenNewAppointment || onNewAppointmentClick;
   return (
     <header className="fixed top-0 left-0 lg:left-72 right-0 h-20 bg-white/85 backdrop-blur-xl z-40 border-b border-[#eff4ff] shadow-[0_1px_8px_rgba(0,0,0,0.04)] transition-all">
       <div className="h-20 w-full px-4 sm:px-8 flex items-center justify-between gap-4">
@@ -65,7 +68,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
           {/* New Appointment CTA */}
           <button
             id="btn-header-new-appointment"
-            onClick={onOpenNewAppointment}
+            onClick={handleOpenAppointment}
             className="flex items-center gap-1.5 sm:gap-2 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-full bg-[#b10e6b] hover:bg-[#930b58] text-white text-xs sm:text-sm font-semibold shadow-sm transition-all transform active:scale-95 cursor-pointer"
           >
             <Plus className="w-4 h-4" />

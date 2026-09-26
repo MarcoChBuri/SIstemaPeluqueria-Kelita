@@ -14,6 +14,7 @@ import { NavigationTab } from '../types';
 interface NavigationSidebarProps {
   activeTab: NavigationTab;
   onSelectTab: (tab: NavigationTab) => void;
+  onNewAppointmentClick?: () => void;
   completedAppointmentsCount?: number;
   totalAppointmentsCount?: number;
 }

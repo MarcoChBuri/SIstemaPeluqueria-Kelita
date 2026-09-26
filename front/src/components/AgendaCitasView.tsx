@@ -17,6 +17,7 @@ import { updateCitaEstado } from '../services/api';
 
 interface AgendaCitasViewProps {
   citas: Cita[];
+  servicios?: any[];
   onOpenNewAppointment: () => void;
   onAppointmentUpdated: (citaActualizada: Cita) => void;
   onShowToast: (message: string) => void;

@@ -140,3 +140,5 @@ export interface CursoItem {
   link_hotmart: string;
   activo: boolean;
 }
+
+export type CursoHotmart = CursoItem;
