@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "node server.js",
     "start": "node server.js",
-    "build": "npm --prefix front run build",
+    "build": "npm --prefix front install && npm --prefix front run build",
     "dev:front": "npm --prefix front run dev"
   },
   "dependencies": {
