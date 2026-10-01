@@ -54,14 +54,16 @@ async function crearCita(req, res) {
       return res.status(404).json({ ok: false, error: 'Servicio no encontrado.' });
     }
 
-    // 3. Calcular hora_fin sumando la duración en minutos
+    // 3. Calcular hora_fin sumando la duración en minutos (usar duracion_minutos personalizada o del servicio)
+    const duracionFinal = req.body.duracion_minutos ? parseInt(req.body.duracion_minutos, 10) : (servicio.duracion_minutos || 60);
     const [horasStr, minutosStr] = hora_inicio.split(':');
     const inicioMinutos = parseInt(horasStr, 10) * 60 + parseInt(minutosStr, 10);
-    const finMinutos = inicioMinutos + (servicio.duracion_minutos || 60);
+    const finMinutos = inicioMinutos + duracionFinal;
 
     const finHora = String(Math.floor(finMinutos / 60)).padStart(2, '0');
     const finMin = String(finMinutos % 60).padStart(2, '0');
     const hora_fin = `${finHora}:${finMin}`;
+
 
     // 4. Validar disponibilidad (evitar solapamiento de horarios en citas no canceladas)
     const { data: citasExistentes, error: errCitas } = await supabase

@@ -112,6 +112,7 @@ class ApiService {
     String? promocionId,
     required String fechaCita,
     required String horaInicio,
+    int? duracionMinutos,
     String? notas,
   }) async {
     final payload = {
@@ -122,6 +123,7 @@ class ApiService {
       'promocion_id': promocionId,
       'fecha_cita': fechaCita,
       'hora_inicio': horaInicio,
+      'duracion_minutos': duracionMinutos,
       'notas': notas,
     };
     final res = await _request('/citas', method: 'POST', body: payload);
@@ -189,9 +191,31 @@ class ApiService {
     return Servicio.fromJson(res['servicio'] as Map<String, dynamic>);
   }
 
+  Future<Servicio> updateServicio({
+    required String id,
+    required String nombre,
+    required String categoria,
+    String? descripcion,
+    required double precioBase,
+  }) async {
+    final payload = {
+      'nombre': nombre,
+      'categoria': categoria,
+      'descripcion': descripcion,
+      'precio_base': precioBase,
+    };
+    final res = await _request('/servicios/$id', method: 'PUT', body: payload);
+    return Servicio.fromJson(res['servicio'] as Map<String, dynamic>);
+  }
+
+  Future<void> deleteServicio(String id) async {
+    await _request('/servicios/$id', method: 'DELETE');
+  }
+
   // --- PROMOCIONES ---
-  Future<List<Promocion>> getPromociones() async {
-    final res = await _request('/promociones');
+  Future<List<Promocion>> getPromociones({bool incluirInactivas = true}) async {
+    final query = incluirInactivas ? '?incluir_inactivas=true' : '';
+    final res = await _request('/promociones$query');
     final rawList = res['promociones'] as List? ?? [];
     return rawList.map((item) => Promocion.fromJson(item as Map<String, dynamic>)).toList();
   }
@@ -204,6 +228,9 @@ class ApiService {
     String? fechaInicio,
     required String fechaFin,
     String? imagenUrl,
+    bool esPublica = true,
+    bool activa = true,
+    String? codigoQr,
   }) async {
     final payload = {
       'titulo': titulo,
@@ -213,10 +240,52 @@ class ApiService {
       'fecha_inicio': fechaInicio,
       'fecha_fin': fechaFin,
       'imagen_url': imagenUrl,
+      'es_publica': esPublica,
+      'activa': activa,
+      'codigo_qr': codigoQr,
     };
     final res = await _request('/promociones', method: 'POST', body: payload);
     return Promocion.fromJson(res['promocion'] as Map<String, dynamic>);
   }
+
+  Future<Promocion> updatePromocion({
+    required String id,
+    String? titulo,
+    String? descripcion,
+    double? porcentajeDescuento,
+    double? montoDescuento,
+    String? fechaInicio,
+    String? fechaFin,
+    String? imagenUrl,
+    bool? activa,
+    bool? esPublica,
+    String? codigoQr,
+  }) async {
+    final payload = <String, dynamic>{};
+    if (titulo != null) payload['titulo'] = titulo;
+    if (descripcion != null) payload['descripcion'] = descripcion;
+    if (porcentajeDescuento != null) payload['porcentaje_descuento'] = porcentajeDescuento;
+    if (montoDescuento != null) payload['monto_descuento'] = montoDescuento;
+    if (fechaInicio != null) payload['fecha_inicio'] = fechaInicio;
+    if (fechaFin != null) payload['fecha_fin'] = fechaFin;
+    if (imagenUrl != null) payload['imagen_url'] = imagenUrl;
+    if (activa != null) payload['activa'] = activa;
+    if (esPublica != null) payload['es_publica'] = esPublica;
+    if (codigoQr != null) payload['codigo_qr'] = codigoQr;
+
+    final res = await _request('/promociones/$id', method: 'PUT', body: payload);
+    return Promocion.fromJson(res['promocion'] as Map<String, dynamic>);
+  }
+
+  Future<void> deletePromocion(String id) async {
+    await _request('/promociones/$id', method: 'DELETE');
+  }
+
+  Future<Map<String, dynamic>> validarQrPromocion(String codigoQr) async {
+    final res = await _request('/promociones/validar-qr', method: 'POST', body: {'codigo_qr': codigoQr});
+    return res;
+  }
+
 
   // --- CALCULADORA DE COLORIMETRÍA ---
   Future<CalculoPrecioResult> calcularPrecio({

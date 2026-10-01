@@ -9,6 +9,8 @@ class Promocion {
   final String fechaFin;
   final String? imagenUrl;
   final bool activa;
+  final bool esPublica;
+  final String codigoQr;
 
   Promocion({
     required this.id,
@@ -21,7 +23,9 @@ class Promocion {
     required this.fechaFin,
     this.imagenUrl,
     this.activa = true,
-  });
+    this.esPublica = true,
+    String? codigoQr,
+  }) : codigoQr = codigoQr ?? id;
 
   factory Promocion.fromJson(Map<String, dynamic> json) {
     return Promocion(
@@ -39,6 +43,8 @@ class Promocion {
       fechaFin: json['fecha_fin']?.toString() ?? '',
       imagenUrl: json['imagen_url']?.toString(),
       activa: json['activa'] ?? true,
+      esPublica: json['es_publica'] ?? true,
+      codigoQr: json['codigo_qr']?.toString() ?? json['id']?.toString() ?? '',
     );
   }
 
@@ -53,6 +59,9 @@ class Promocion {
       'fecha_fin': fechaFin,
       'imagen_url': imagenUrl,
       'activa': activa,
+      'es_publica': esPublica,
+      'codigo_qr': codigoQr,
     };
   }
 }
+

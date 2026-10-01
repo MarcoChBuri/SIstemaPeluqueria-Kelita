@@ -128,9 +128,6 @@ export const ServiciosView: React.FC<ServiciosViewProps> = ({
                 <span className="inline-block px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#ffd9e4] text-[#b10e6b]">
                   {s.categoria.replace('_', ' ')}
                 </span>
-                <span className="text-xs text-[#515f74] flex items-center gap-1">
-                  <Clock className="w-3.5 h-3.5" /> {s.duracion_minutos} min
-                </span>
               </div>
 
               <h3 className="font-serif text-lg font-bold text-[#0b1c30] mb-2">

@@ -256,6 +256,171 @@ class _GastosVentasTabState extends State<GastosVentasTab> with SingleTickerProv
     );
   }
 
+  void _openRegistrarServicioDirectoDialog(BuildContext context) {
+    final formKey = GlobalKey<FormState>();
+    final servicioCtrl = TextEditingController();
+    final precioCtrl = TextEditingController(text: '20.00');
+    final clienteCtrl = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Servicio Presencial (Sin Cita)', style: Theme.of(context).textTheme.headlineMedium),
+                      IconButton(
+                        onPressed: () => Navigator.of(ctx).pop(),
+                        icon: const Icon(Icons.close_rounded),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: servicioCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Servicio Realizado *',
+                      hintText: 'Ej: Corte + Secado, Manicure, Tinte Express',
+                    ),
+                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Requerido' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: precioCtrl,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    decoration: const InputDecoration(
+                      labelText: 'Monto Cobrado (\$) *',
+                      prefixIcon: Icon(Icons.attach_money_rounded),
+                    ),
+                    validator: (v) => (v == null || double.tryParse(v) == null || double.parse(v) <= 0)
+                        ? 'Monto inválido'
+                        : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: clienteCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Nombre Clienta (Opcional)',
+                      hintText: 'Ej: María Gómez',
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        if (!formKey.currentState!.validate()) return;
+                        final prov = Provider.of<AppStateProvider>(context, listen: false);
+                        try {
+                          await prov.createServicioSinCita(
+                            nombreServicio: servicioCtrl.text.trim(),
+                            precio: double.parse(precioCtrl.text),
+                            nombreCliente: clienteCtrl.text.trim().isEmpty ? null : clienteCtrl.text.trim(),
+                          );
+                          if (ctx.mounted) {
+                            Navigator.of(ctx).pop();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Servicio presencial registrado en ganancias.')),
+                            );
+                          }
+                        } catch (e) {
+                          if (ctx.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.danger),
+                            );
+                          }
+                        }
+                      },
+                      child: const Text('Registrar en Ganancias'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showRegistrarOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '¿Qué deseas registrar?',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textMain),
+                ),
+                const SizedBox(height: 16),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(color: const Color(0xFFFFE4E6), borderRadius: BorderRadius.circular(12)),
+                    child: const Icon(Icons.arrow_downward_rounded, color: AppTheme.danger),
+                  ),
+                  title: const Text('Registrar Gasto', style: TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: const Text('Egreso por tintes, insumos, servicios, etc.'),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _openNewGastoDialog(context);
+                  },
+                ),
+                const Divider(),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(color: const Color(0xFFD1FAE5), borderRadius: BorderRadius.circular(12)),
+                    child: const Icon(Icons.shopping_bag_outlined, color: Color(0xFF047857)),
+                  ),
+                  title: const Text('Registrar Venta de Producto', style: TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: const Text('Venta de shampoo, keratina o retail'),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _openNewVentaDialog(context);
+                  },
+                ),
+                const Divider(),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(color: const Color(0xFFDBEAFE), borderRadius: BorderRadius.circular(12)),
+                    child: const Icon(Icons.content_cut_rounded, color: Color(0xFF2563EB)),
+                  ),
+                  title: const Text('Registrar Servicio Presencial (Sin Cita)', style: TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: const Text('Atención directa a clienta que llegó al salón'),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _openRegistrarServicioDirectoDialog(context);
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<AppStateProvider>(context);
@@ -263,19 +428,13 @@ class _GastosVentasTabState extends State<GastosVentasTab> with SingleTickerProv
     return Scaffold(
       backgroundColor: AppTheme.background,
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          if (_tabController.index == 0) {
-            _openNewGastoDialog(context);
-          } else {
-            _openNewVentaDialog(context);
-          }
-        },
+        onPressed: () => _showRegistrarOptions(context),
         backgroundColor: AppTheme.primary,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add_rounded),
-        label: Text(
-          _tabController.index == 0 ? 'Registrar Gasto' : 'Registrar Venta',
-          style: const TextStyle(fontWeight: FontWeight.bold),
+        label: const Text(
+          'Registrar',
+          style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
       body: NestedScrollView(
@@ -307,12 +466,87 @@ class _GastosVentasTabState extends State<GastosVentasTab> with SingleTickerProv
                             ),
                           ),
                           const SizedBox(height: 4),
-                          Text('Gastos & Venta de Productos',
+                          Text('Gastos & Ventas del Salón',
                               style: Theme.of(context).textTheme.headlineMedium),
                           const SizedBox(height: 2),
                           const Text(
-                            'Control de egresos operativos y ventas de retail en el salón.',
+                            'Control de egresos, ventas retail y atención presencial sin cita.',
                             style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                          ),
+
+                          const SizedBox(height: 14),
+
+                          // --- RESUMEN SEMANAL BANNER ---
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF8FAF9),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: AppTheme.border),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text(
+                                      'RESUMEN DE ESTA SEMANA',
+                                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.primary, letterSpacing: 0.5),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: provider.balanceNetoEstaSemana >= 0 ? const Color(0xFFD1FAE5) : const Color(0xFFFFE4E6),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                        'Balance: \$${provider.balanceNetoEstaSemana.toStringAsFixed(2)}',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          color: provider.balanceNetoEstaSemana >= 0 ? const Color(0xFF047857) : AppTheme.danger,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 10),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          const Text('Gastos Semanales', style: TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            '-\$${provider.gastosEstaSemana.toStringAsFixed(2)}',
+                                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.danger),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Container(width: 1, height: 28, color: AppTheme.border),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          const Text('Ganancias Semanales', style: TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            '+\$${provider.totalGananciasEstaSemana.toStringAsFixed(2)}',
+                                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF047857)),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),

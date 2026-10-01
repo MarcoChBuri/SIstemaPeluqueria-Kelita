@@ -8,8 +8,15 @@ const {
   verificarDisponibilidad,
 } = require('../controllers/citas.controller');
 
-const { listarServicios, crearServicio } = require('../controllers/servicios.controller');
-const { listarPromociones, crearPromocion } = require('../controllers/promociones.controller');
+const { listarServicios, crearServicio, actualizarServicio, eliminarServicio } = require('../controllers/servicios.controller');
+const {
+  listarPromociones,
+  crearPromocion,
+  actualizarPromocion,
+  eliminarPromocion,
+  validarQrPromocion,
+} = require('../controllers/promociones.controller');
+
 const { listarGaleria, agregarFotoGaleria } = require('../controllers/galeria.controller');
 const { listarCursosHotmart, crearCursoHotmart } = require('../controllers/cursos.controller');
 const { registrarGasto, listarGastos } = require('../controllers/gastos.controller');
@@ -33,12 +40,17 @@ router.get('/citas/disponibilidad',     verificarDisponibilidad);   // Consultar
 // ==========================================
 router.get('/servicios',                listarServicios);           // Catálogo público
 router.post('/servicios',               crearServicio);             // Raquel agrega nuevo servicio
+router.put('/servicios/:id',            actualizarServicio);        // Raquel edita servicio
+router.delete('/servicios/:id',         eliminarServicio);          // Raquel elimina servicio
 
 // ==========================================
-// 3. PROMOCIONES DEL MES
+// 3. PROMOCIONES DEL MES Y CÓDIGOS QR
 // ==========================================
-router.get('/promociones',              listarPromociones);         // Promos visibles en web
+router.get('/promociones',              listarPromociones);         // Promos visibles en web/admin
 router.post('/promociones',             crearPromocion);            // Raquel crea promo
+router.put('/promociones/:id',          actualizarPromocion);       // Raquel edita promo
+router.delete('/promociones/:id',       eliminarPromocion);         // Raquel elimina promo
+router.post('/promociones/validar-qr',  validarQrPromocion);        // Validar QR de cliente VIP
 
 // ==========================================
 // 4. GALERÍA Y PORTAFOLIO DE TRABAJOS

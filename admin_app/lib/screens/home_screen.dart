@@ -75,59 +75,12 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         actions: [
-          // Connection state pill
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: InkWell(
-              onTap: () {
-                showDialog(
-                  context: context,
-                  builder: (_) => const SettingsDialog(),
-                );
-              },
-              borderRadius: BorderRadius.circular(20),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: provider.isBackendConnected ? const Color(0xFFD1FAE5) : const Color(0xFFFFE4E6),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      provider.isBackendConnected ? Icons.wifi_rounded : Icons.wifi_off_rounded,
-                      size: 14,
-                      color: provider.isBackendConnected ? const Color(0xFF047857) : AppTheme.danger,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      provider.isBackendConnected ? 'Online' : 'Offline',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: provider.isBackendConnected ? const Color(0xFF047857) : AppTheme.danger,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded, color: AppTheme.textMain),
-            tooltip: 'Sincronizar',
+            tooltip: 'Sincronizar Datos',
             onPressed: () => provider.loadAllData(),
           ),
-          IconButton(
-            icon: const Icon(Icons.settings_outlined, color: AppTheme.textMain),
-            tooltip: 'Configuración Servidor',
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (_) => const SettingsDialog(),
-              );
-            },
-          ),
+          const SizedBox(width: 8),
         ],
       ),
       drawer: Drawer(

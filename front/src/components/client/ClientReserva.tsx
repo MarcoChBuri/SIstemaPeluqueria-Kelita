@@ -97,10 +97,7 @@ export const ClientReserva: React.FC = () => {
                     )}
                   </div>
 
-                  <div className="mt-3 pt-2 border-t border-[#f5e6ed] flex items-center justify-between text-[11px]">
-                    <span className="text-[#8b7079] flex items-center gap-1">
-                      <Clock className="w-3 h-3" /> {s.duracion_minutos} min
-                    </span>
+                  <div className="mt-3 pt-2 border-t border-[#f5e6ed] flex items-center justify-end text-[11px]">
                     <span className="font-bold text-[#b10e6b] flex items-center gap-1 group-hover:translate-x-1 transition-transform">
                       <CalendarDays className="w-3.5 h-3.5" /> Escoger Día <ChevronRight className="w-3 h-3" />
                     </span>

@@ -25,6 +25,7 @@ class _NewAppointmentDialogState extends State<NewAppointmentDialog> {
   DateTime _selectedDate = DateTime.now();
   TimeOfDay _selectedTime = const TimeOfDay(hour: 10, minute: 0);
 
+  int _selectedDuracionMinutos = 60;
   bool _isSubmitting = false;
   String? _createdWhatsappUrl;
   String? _createdClienteNombre;
@@ -35,6 +36,7 @@ class _NewAppointmentDialogState extends State<NewAppointmentDialog> {
     final prov = Provider.of<AppStateProvider>(context, listen: false);
     if (prov.servicios.isNotEmpty) {
       _selectedServicioId = prov.servicios.first.id;
+      _selectedDuracionMinutos = prov.servicios.first.duracionMinutos;
     }
   }
 
@@ -72,8 +74,10 @@ class _NewAppointmentDialogState extends State<NewAppointmentDialog> {
         promocionId: _selectedPromocionId,
         fechaCita: fechaStr,
         horaInicio: horaStr,
+        duracionMinutos: _selectedDuracionMinutos,
         notas: _notasController.text.trim().isEmpty ? null : _notasController.text.trim(),
       );
+
 
       setState(() {
         _isSubmitting = false;
@@ -228,9 +232,41 @@ class _NewAppointmentDialogState extends State<NewAppointmentDialog> {
                         child: Text('${s.nombre} (\$${s.precioBase.toStringAsFixed(2)})'),
                       );
                     }).toList(),
-                    onChanged: (val) => setState(() => _selectedServicioId = val),
+                    onChanged: (val) {
+                      setState(() {
+                        _selectedServicioId = val;
+                        final found = servicios.firstWhere((s) => s.id == val, orElse: () => servicios.first);
+                        _selectedDuracionMinutos = found.duracionMinutos;
+                      });
+                    },
                   ),
                   const SizedBox(height: 12),
+
+                  // Duración / Tiempo a ocupar
+                  DropdownButtonFormField<int>(
+                    value: _selectedDuracionMinutos,
+                    decoration: const InputDecoration(
+                      labelText: 'Tiempo a ocupar (Horas / Minutos) *',
+                      prefixIcon: Icon(Icons.timer_outlined, size: 20),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 30, child: Text('30 Minutos (0.5 hora)')),
+                      DropdownMenuItem(value: 60, child: Text('1 Hora (60 min)')),
+                      DropdownMenuItem(value: 90, child: Text('1.5 Horas (90 min)')),
+                      DropdownMenuItem(value: 120, child: Text('2 Horas (120 min)')),
+                      DropdownMenuItem(value: 150, child: Text('2.5 Horas (150 min)')),
+                      DropdownMenuItem(value: 180, child: Text('3 Horas (180 min)')),
+                      DropdownMenuItem(value: 210, child: Text('3.5 Horas (210 min)')),
+                      DropdownMenuItem(value: 240, child: Text('4 Horas (240 min)')),
+                      DropdownMenuItem(value: 300, child: Text('5 Horas (300 min)')),
+                      DropdownMenuItem(value: 360, child: Text('6 Horas (360 min)')),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) setState(() => _selectedDuracionMinutos = val);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+
 
                   // Promoción (Opcional)
                   DropdownButtonFormField<String?>(

@@ -55,7 +55,7 @@ export const ReservaModal: React.FC<ReservaModalProps> = ({
       }
     }
 
-    let mensaje = `¡Hola ${SALON_CONFIG.nombre}! 💇‍♀️ Quiero consultar / reservar el servicio:\n\n💅 *Servicio:* ${servicio.nombre}\n💰 *Precio referencia:* ${SALON_CONFIG.monedaSimbolo}${Number(servicio.precio_base).toFixed(2)}\n⏱ *Duración approx:* ${servicio.duracion_minutos} min`;
+    let mensaje = `¡Hola ${SALON_CONFIG.nombre}! 💇‍♀️ Quiero consultar / reservar el servicio:\n\n💅 *Servicio:* ${servicio.nombre}\n💰 *Precio referencia:* ${SALON_CONFIG.monedaSimbolo}${Number(servicio.precio_base).toFixed(2)}`;
 
     if (fechaTexto) {
       mensaje += `\n📅 *Día preferido:* ${fechaTexto}`;
@@ -104,9 +104,6 @@ export const ReservaModal: React.FC<ReservaModalProps> = ({
             <div>
               <span className="text-[10px] uppercase font-bold text-[#b10e6b] block">Servicio</span>
               <span className="font-serif font-bold text-[#0b1c30] text-sm sm:text-base">{servicio.nombre}</span>
-              <span className="text-xs text-[#515f74] block mt-0.5 flex items-center gap-1">
-                <Clock className="w-3 h-3" /> {servicio.duracion_minutos} min
-              </span>
             </div>
             <div className="text-right">
               <span className="text-[10px] text-[#8b7079] block">Precio</span>

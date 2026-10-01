@@ -116,8 +116,9 @@ export async function createServicio(payload: {
 // ==========================================
 // 3. PROMOCIONES
 // ==========================================
-export async function getPromociones(): Promise<Promocion[]> {
-  const res = await request<{ ok: boolean; promociones: Promocion[] }>('/promociones');
+export async function getPromociones(soloPublicas: boolean = true): Promise<Promocion[]> {
+  const query = soloPublicas ? '?solo_publicas=true' : '';
+  const res = await request<{ ok: boolean; promociones: Promocion[] }>(`/promociones${query}`);
   return res.promociones;
 }
 

@@ -192,7 +192,7 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
                     <option value="">Selecciona un servicio</option>
                     {servicios.map((s) => (
                       <option key={s.id} value={s.id}>
-                        {s.nombre} (${Number(s.precio_base).toFixed(2)} - {s.duracion_minutos} min)
+                        {s.nombre} (${Number(s.precio_base).toFixed(2)})
                       </option>
                     ))}
                   </select>

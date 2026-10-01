@@ -110,14 +110,15 @@ class _SettingsDialogState extends State<SettingsDialog> {
               const SizedBox(height: 10),
               Wrap(
                 spacing: 8,
+                runSpacing: 6,
                 children: [
                   ActionChip(
-                    label: const Text('Emulador (10.0.2.2:3000)', style: TextStyle(fontSize: 10)),
-                    onPressed: () => setState(() => _urlController.text = 'http://10.0.2.2:3000/api'),
+                    label: const Text('☁️ Vercel Nube (Recomendado)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                    onPressed: () => setState(() => _urlController.text = 'https://s-istema-peluqueria-kelita.vercel.app/api'),
                   ),
                   ActionChip(
-                    label: const Text('Localhost (127.0.0.1)', style: TextStyle(fontSize: 10)),
-                    onPressed: () => setState(() => _urlController.text = 'http://127.0.0.1:3000/api'),
+                    label: const Text('Emulador (10.0.2.2)', style: TextStyle(fontSize: 10)),
+                    onPressed: () => setState(() => _urlController.text = 'http://10.0.2.2:3000/api'),
                   ),
                 ],
               ),

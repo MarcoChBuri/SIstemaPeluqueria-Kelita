@@ -116,7 +116,65 @@ async function crearServicio(req, res) {
   }
 }
 
+/**
+ * PUT /api/servicios/:id
+ * Editar un servicio existente.
+ */
+async function actualizarServicio(req, res) {
+  try {
+    const { id } = req.params;
+    const { nombre, categoria, descripcion, precio_base } = req.body;
+
+    const updates = {};
+    if (nombre) updates.nombre = nombre.trim();
+    if (categoria && CATEGORIAS_VALIDAS.includes(categoria)) updates.categoria = categoria;
+    if (descripcion !== undefined) updates.descripcion = descripcion ? descripcion.trim() : null;
+    if (precio_base !== undefined) updates.precio_base = +Number(precio_base).toFixed(2);
+
+    const { data, error } = await supabase
+      .from('servicios')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[actualizarServicio] Supabase error:', error);
+      return res.status(500).json({ ok: false, error: 'Error al actualizar el servicio.' });
+    }
+
+    return res.status(200).json({ ok: true, servicio: data });
+  } catch (err) {
+    console.error('[actualizarServicio] Error inesperado:', err);
+    return res.status(500).json({ ok: false, error: 'Error interno del servidor.' });
+  }
+}
+
+/**
+ * DELETE /api/servicios/:id
+ * Eliminar un servicio.
+ */
+async function eliminarServicio(req, res) {
+  try {
+    const { id } = req.params;
+    const { error } = await supabase.from('servicios').delete().eq('id', id);
+
+    if (error) {
+      console.error('[eliminarServicio] Supabase error:', error);
+      return res.status(500).json({ ok: false, error: 'Error al eliminar el servicio.' });
+    }
+
+    return res.status(200).json({ ok: true, mensaje: 'Servicio eliminado correctamente.' });
+  } catch (err) {
+    console.error('[eliminarServicio] Error inesperado:', err);
+    return res.status(500).json({ ok: false, error: 'Error interno del servidor.' });
+  }
+}
+
 module.exports = {
   listarServicios,
   crearServicio,
+  actualizarServicio,
+  eliminarServicio,
 };
+

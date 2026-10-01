@@ -1,4 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/cita.dart';
 import '../models/servicio.dart';
 import '../models/promocion.dart';
@@ -7,6 +10,7 @@ import '../models/venta_producto.dart';
 import '../models/reporte_financiero.dart';
 import '../models/galeria_item.dart';
 import '../models/curso_item.dart';
+import '../models/evento_nota.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
 
@@ -24,6 +28,7 @@ class AppStateProvider extends ChangeNotifier {
   double _gananciaVentas = 0.0;
   List<GaleriaItem> _galeria = [];
   List<CursoItem> _cursos = [];
+  List<EventoNota> _eventosNotas = [];
 
   bool _isLoading = false;
   bool _isBackendConnected = false;
@@ -41,14 +46,151 @@ class AppStateProvider extends ChangeNotifier {
   double get gananciaVentas => _gananciaVentas;
   List<GaleriaItem> get galeria => _galeria;
   List<CursoItem> get cursos => _cursos;
+  List<EventoNota> get eventosNotas => _eventosNotas;
   bool get isLoading => _isLoading;
   bool get isBackendConnected => _isBackendConnected;
   String? get errorMessage => _errorMessage;
   String get currentBaseUrl => _api.currentBaseUrl;
 
+  DateTime? _parseDate(String dateStr) {
+    try {
+      return DateTime.parse(dateStr);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // --- CÁLCULOS SEMANALES Y MENSUALES ---
+  double get gastosEstaSemana {
+    final now = DateTime.now();
+    final monday = DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
+    final sunday = monday.add(const Duration(days: 7));
+
+    double total = 0;
+    for (var g in _gastos) {
+      final d = _parseDate(g.fecha);
+      if (d != null && d.isAfter(monday.subtract(const Duration(seconds: 1))) && d.isBefore(sunday)) {
+        total += g.monto;
+      }
+    }
+    return total;
+  }
+
+  double get gananciasCitasEstaSemana {
+    final now = DateTime.now();
+    final monday = DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
+    final sunday = monday.add(const Duration(days: 7));
+
+    double total = 0;
+    for (var c in _citas) {
+      if (c.estado == 'realizada' || c.estado == 'completada') {
+        final d = _parseDate(c.fechaCita);
+        if (d != null && d.isAfter(monday.subtract(const Duration(seconds: 1))) && d.isBefore(sunday)) {
+          total += c.precioFinal;
+        }
+      }
+    }
+    return total;
+  }
+
+  double get gananciasVentasEstaSemana {
+    final now = DateTime.now();
+    final monday = DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
+    final sunday = monday.add(const Duration(days: 7));
+
+    double total = 0;
+    for (var v in _ventas) {
+      final d = _parseDate(v.fecha);
+      if (d != null && d.isAfter(monday.subtract(const Duration(seconds: 1))) && d.isBefore(sunday)) {
+        total += (v.precioVenta * v.cantidad);
+      }
+    }
+    return total;
+  }
+
+  double get totalGananciasEstaSemana => gananciasCitasEstaSemana + gananciasVentasEstaSemana;
+  double get balanceNetoEstaSemana => totalGananciasEstaSemana - gastosEstaSemana;
+
+  // Resumen Mensual
+  double get gastosEsteMes {
+    final now = DateTime.now();
+    double total = 0;
+    for (var g in _gastos) {
+      final d = _parseDate(g.fecha);
+      if (d != null && d.year == now.year && d.month == now.month) {
+        total += g.monto;
+      }
+    }
+    if (total > 0) return total;
+    return _reporte?.totalGastos ?? _totalGastos;
+  }
+
+  double get gananciasCitasEsteMes {
+    final now = DateTime.now();
+    double total = 0;
+    for (var c in _citas) {
+      if (c.estado == 'realizada' || c.estado == 'completada') {
+        final d = _parseDate(c.fechaCita);
+        if (d != null && d.year == now.year && d.month == now.month) {
+          total += c.precioFinal;
+        }
+      }
+    }
+    if (total > 0) return total;
+    return _reporte?.ingresos.servicios ?? 0;
+  }
+
+  double get totalIngresosEsteMes {
+    final now = DateTime.now();
+    double totalVentasMes = 0;
+    for (var v in _ventas) {
+      final d = _parseDate(v.fecha);
+      if (d != null && d.year == now.year && d.month == now.month) {
+        totalVentasMes += (v.precioVenta * v.cantidad);
+      }
+    }
+    final totalCalc = gananciasCitasEsteMes + totalVentasMes;
+    if (totalCalc > 0) return totalCalc;
+    return _reporte?.totalIngresos ?? 0;
+  }
+
+  double get balanceNetoEsteMes => totalIngresosEsteMes - gastosEsteMes;
+
   Future<void> init() async {
     await _api.init();
+    await _loadEventosNotas();
     await loadAllData();
+  }
+
+  Future<void> _loadEventosNotas() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final rawJson = prefs.getString('raquel_eventos_notas');
+      if (rawJson != null && rawJson.isNotEmpty) {
+        final List decoded = jsonDecode(rawJson);
+        _eventosNotas = decoded.map((e) => EventoNota.fromJson(e)).toList();
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _saveEventosNotas() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final rawJson = jsonEncode(_eventosNotas.map((e) => e.toJson()).toList());
+      await prefs.setString('raquel_eventos_notas', rawJson);
+    } catch (_) {}
+  }
+
+  Future<void> addEventoNota(EventoNota evento) async {
+    _eventosNotas.add(evento);
+    await _saveEventosNotas();
+    notifyListeners();
+  }
+
+  Future<void> removeEventoNota(String id) async {
+    _eventosNotas.removeWhere((e) => e.id == id);
+    await _saveEventosNotas();
+    notifyListeners();
   }
 
   Future<void> updateServerUrl(String newUrl) async {
@@ -128,6 +270,7 @@ class AppStateProvider extends ChangeNotifier {
     String? promocionId,
     required String fechaCita,
     required String horaInicio,
+    int? duracionMinutos,
     String? notas,
   }) async {
     final result = await _api.createCita(
@@ -138,6 +281,7 @@ class AppStateProvider extends ChangeNotifier {
       promocionId: promocionId,
       fechaCita: fechaCita,
       horaInicio: horaInicio,
+      duracionMinutos: duracionMinutos,
       notas: notas,
     );
 
@@ -149,13 +293,58 @@ class AppStateProvider extends ChangeNotifier {
   }
 
   Future<void> updateCitaStatus(String id, {String? estado, String? estadoPago}) async {
-    final updated = await _api.updateCitaEstado(id, estado: estado, estadoPago: estadoPago);
-    final index = _citas.indexWhere((c) => c.id == id);
-    if (index != -1) {
-      _citas[index] = updated;
-      notifyListeners();
-      refreshReporte();
+    // If status changes to realizada or completada, default payment status to pagado
+    final targetPago = estadoPago ?? ((estado == 'realizada' || estado == 'completada') ? 'pagado' : null);
+    try {
+      final updated = await _api.updateCitaEstado(id, estado: estado, estadoPago: targetPago);
+      final index = _citas.indexWhere((c) => c.id == id);
+      if (index != -1) {
+        _citas[index] = updated;
+        notifyListeners();
+        refreshReporte();
+      }
+    } catch (_) {
+      final index = _citas.indexWhere((c) => c.id == id);
+      if (index != -1) {
+        final c = _citas[index];
+        _citas[index] = Cita(
+          id: c.id,
+          createdAt: c.createdAt,
+          clienteNombre: c.clienteNombre,
+          clienteTelefono: c.clienteTelefono,
+          clienteEmail: c.clienteEmail,
+          servicioId: c.servicioId,
+          promocionId: c.promocionId,
+          fechaCita: c.fechaCita,
+          horaInicio: c.horaInicio,
+          horaFin: c.horaFin,
+          estado: estado ?? c.estado,
+          estadoPago: targetPago ?? c.estadoPago,
+          precioOriginal: c.precioOriginal,
+          descuentoAplicado: c.descuentoAplicado,
+          precioFinal: c.precioFinal,
+          notas: c.notas,
+          servicios: c.servicios,
+          promociones: c.promociones,
+        );
+        notifyListeners();
+        refreshReporte();
+      }
     }
+  }
+
+  Future<void> createServicioSinCita({
+    required String nombreServicio,
+    required double precio,
+    String? nombreCliente,
+  }) async {
+    await createVentaProducto(
+      nombre: 'Servicio Presencial: $nombreServicio',
+      costo: 0,
+      precio: precio,
+      cantidad: 1,
+      nombreCliente: nombreCliente ?? 'Cliente Presencial (Sin Cita)',
+    );
   }
 
   // Servicios Actions
@@ -180,6 +369,51 @@ class AppStateProvider extends ChangeNotifier {
     return s;
   }
 
+  Future<void> updateServicio({
+    required String id,
+    required String nombre,
+    required String categoria,
+    String? descripcion,
+    required double precioBase,
+  }) async {
+    try {
+      final updated = await _api.updateServicio(
+        id: id,
+        nombre: nombre,
+        categoria: categoria,
+        descripcion: descripcion,
+        precioBase: precioBase,
+      );
+      final idx = _servicios.indexWhere((s) => s.id == id);
+      if (idx != -1) {
+        _servicios[idx] = updated;
+        notifyListeners();
+      }
+    } catch (_) {
+      final idx = _servicios.indexWhere((s) => s.id == id);
+      if (idx != -1) {
+        final existing = _servicios[idx];
+        _servicios[idx] = Servicio(
+          id: id,
+          nombre: nombre,
+          categoria: categoria,
+          descripcion: descripcion,
+          duracionMinutos: existing.duracionMinutos,
+          precioBase: precioBase,
+        );
+        notifyListeners();
+      }
+    }
+  }
+
+  Future<void> deleteServicio(String id) async {
+    try {
+      await _api.deleteServicio(id);
+    } catch (_) {}
+    _servicios.removeWhere((s) => s.id == id);
+    notifyListeners();
+  }
+
   // Promociones Actions
   Future<Promocion> createPromocion({
     required String titulo,
@@ -189,6 +423,9 @@ class AppStateProvider extends ChangeNotifier {
     String? fechaInicio,
     required String fechaFin,
     String? imagenUrl,
+    bool esPublica = true,
+    bool activa = true,
+    String? codigoQr,
   }) async {
     final p = await _api.createPromocion(
       titulo: titulo,
@@ -198,11 +435,82 @@ class AppStateProvider extends ChangeNotifier {
       fechaInicio: fechaInicio,
       fechaFin: fechaFin,
       imagenUrl: imagenUrl,
+      esPublica: esPublica,
+      activa: activa,
+      codigoQr: codigoQr,
     );
-    _promociones.add(p);
+    _promociones.insert(0, p);
     notifyListeners();
     return p;
   }
+
+  Future<void> updatePromocion({
+    required String id,
+    String? titulo,
+    String? descripcion,
+    double? porcentajeDescuento,
+    double? montoDescuento,
+    String? fechaInicio,
+    String? fechaFin,
+    String? imagenUrl,
+    bool? activa,
+    bool? esPublica,
+    String? codigoQr,
+  }) async {
+    try {
+      final updated = await _api.updatePromocion(
+        id: id,
+        titulo: titulo,
+        descripcion: descripcion,
+        porcentajeDescuento: porcentajeDescuento,
+        montoDescuento: montoDescuento,
+        fechaInicio: fechaInicio,
+        fechaFin: fechaFin,
+        imagenUrl: imagenUrl,
+        activa: activa,
+        esPublica: esPublica,
+        codigoQr: codigoQr,
+      );
+      final idx = _promociones.indexWhere((p) => p.id == id);
+      if (idx != -1) {
+        _promociones[idx] = updated;
+        notifyListeners();
+      }
+    } catch (_) {
+      final idx = _promociones.indexWhere((p) => p.id == id);
+      if (idx != -1) {
+        final ex = _promociones[idx];
+        _promociones[idx] = Promocion(
+          id: id,
+          createdAt: ex.createdAt,
+          titulo: titulo ?? ex.titulo,
+          descripcion: descripcion ?? ex.descripcion,
+          porcentajeDescuento: porcentajeDescuento ?? ex.porcentajeDescuento,
+          montoDescuento: montoDescuento ?? ex.montoDescuento,
+          fechaInicio: fechaInicio ?? ex.fechaInicio,
+          fechaFin: fechaFin ?? ex.fechaFin,
+          imagenUrl: imagenUrl ?? ex.imagenUrl,
+          activa: activa ?? ex.activa,
+          esPublica: esPublica ?? ex.esPublica,
+          codigoQr: codigoQr ?? ex.codigoQr,
+        );
+        notifyListeners();
+      }
+    }
+  }
+
+  Future<void> deletePromocion(String id) async {
+    try {
+      await _api.deletePromocion(id);
+    } catch (_) {}
+    _promociones.removeWhere((p) => p.id == id);
+    notifyListeners();
+  }
+
+  Future<Map<String, dynamic>> validarQrPromocion(String codigoQr) async {
+    return _api.validarQrPromocion(codigoQr);
+  }
+
 
   // Gastos Actions
   Future<Gasto> createGasto({

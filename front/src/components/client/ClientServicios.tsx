@@ -63,9 +63,6 @@ const ServiceCard: React.FC<{
           <span className="px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[9px] sm:text-[10px] font-bold uppercase tracking-wider bg-[#fdf2f8] text-[#b10e6b] flex items-center gap-1">
             {servicio.categoria.replace(/_/g, ' ')}
           </span>
-          <span className="text-[10px] sm:text-xs text-[#515f74] flex items-center gap-1 whitespace-nowrap">
-            <Clock className="w-3 h-3" /> {servicio.duracion_minutos} min
-          </span>
         </div>
 
         <h3 className="font-serif text-sm sm:text-lg font-bold text-[#0b1c30] mb-1 sm:mb-2 group-hover:text-[#b10e6b] transition-colors">
