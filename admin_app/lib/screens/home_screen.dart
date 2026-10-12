@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/cita.dart';
 import '../providers/app_state_provider.dart';
 import '../theme/app_theme.dart';
 import 'agenda_tab.dart';
 import 'calculadora_tab.dart';
+import 'clientes_tab.dart';
 import 'dashboard_tab.dart';
 import 'galeria_cursos_tab.dart';
 import 'gastos_ventas_tab.dart';
@@ -20,13 +22,15 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
+  Cita? _citaParaCalcular;
 
   final List<String> _tabTitles = [
     'Dashboard',
     'Agenda de Citas',
     'Servicios',
-    'Calculadora Color',
     'Gastos & Ventas',
+    'Calculadora Color',
+    'Clientas',
     'Promociones',
     'Galería & Cursos',
   ];
@@ -36,11 +40,31 @@ class _HomeScreenState extends State<HomeScreen> {
     final provider = Provider.of<AppStateProvider>(context);
 
     final List<Widget> screens = [
-      DashboardTab(onNavigateToTab: (index) => setState(() => _currentIndex = index)),
-      const AgendaTab(),
+      DashboardTab(
+        onNavigateToTab: (index, {Cita? citaParaCalcular}) {
+          setState(() {
+            _currentIndex = index;
+            if (citaParaCalcular != null) _citaParaCalcular = citaParaCalcular;
+          });
+        },
+      ),
+      AgendaTab(
+        onNavigateToTab: (index, {Cita? citaParaCalcular}) {
+          setState(() {
+            _currentIndex = index;
+            if (citaParaCalcular != null) _citaParaCalcular = citaParaCalcular;
+          });
+        },
+      ),
       const ServiciosTab(),
-      const CalculadoraTab(),
       const GastosVentasTab(),
+      CalculadoraTab(
+        citaParaCalcular: _citaParaCalcular,
+        onNavigateToTab: (index) => setState(() => _currentIndex = index),
+      ),
+      ClientesTab(
+        onNavigateToTab: (index) => setState(() => _currentIndex = index),
+      ),
       const PromocionesTab(),
       const GaleriaCursosTab(),
     ];
@@ -123,10 +147,11 @@ class _HomeScreenState extends State<HomeScreen> {
             _buildDrawerItem(0, 'Dashboard', Icons.dashboard_rounded),
             _buildDrawerItem(1, 'Agenda de Citas', Icons.calendar_today_rounded, badgeCount: provider.citas.length),
             _buildDrawerItem(2, 'Servicios & Paquetes', Icons.content_cut_rounded),
-            _buildDrawerItem(3, 'Calculadora Colorimetría', Icons.calculate_rounded),
-            _buildDrawerItem(4, 'Gastos & Ventas', Icons.account_balance_wallet_rounded),
-            _buildDrawerItem(5, 'Promociones', Icons.local_offer_rounded),
-            _buildDrawerItem(6, 'Galería & Cursos', Icons.school_rounded),
+            _buildDrawerItem(3, 'Gastos & Ventas', Icons.account_balance_wallet_rounded),
+            _buildDrawerItem(4, 'Calculadora Colorimetría', Icons.calculate_rounded),
+            _buildDrawerItem(5, 'Clientas Registradas', Icons.people_alt_rounded, badgeCount: provider.clientes.length),
+            _buildDrawerItem(6, 'Promociones', Icons.local_offer_rounded),
+            _buildDrawerItem(7, 'Galería & Cursos', Icons.school_rounded),
             const Divider(),
             ListTile(
               leading: const Icon(Icons.settings_rounded, color: AppTheme.textMuted),
@@ -144,10 +169,9 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: screens[_currentIndex],
       bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex > 4 ? 4 : _currentIndex,
+        selectedIndex: _currentIndex >= 4 ? 4 : _currentIndex,
         onDestinationSelected: (idx) {
           if (idx == 4) {
-            // Show more options bottom sheet or open Gastos
             _showMoreMenu(context);
           } else {
             setState(() => _currentIndex = idx);
@@ -173,9 +197,9 @@ class _HomeScreenState extends State<HomeScreen> {
             label: 'Servicios',
           ),
           const NavigationDestination(
-            icon: Icon(Icons.calculate_outlined),
-            selectedIcon: Icon(Icons.calculate_rounded),
-            label: 'Calculadora',
+            icon: Icon(Icons.account_balance_wallet_outlined),
+            selectedIcon: Icon(Icons.account_balance_wallet_rounded),
+            label: 'Gastos',
           ),
           NavigationDestination(
             icon: const Icon(Icons.grid_view_outlined),
@@ -246,14 +270,27 @@ class _HomeScreenState extends State<HomeScreen> {
               ListTile(
                 leading: Container(
                   padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: const Color(0xFFFFE4E6), borderRadius: BorderRadius.circular(10)),
-                  child: const Icon(Icons.account_balance_wallet_rounded, color: AppTheme.primary, size: 20),
+                  decoration: BoxDecoration(color: const Color(0xFFF5F3FF), borderRadius: BorderRadius.circular(10)),
+                  child: const Icon(Icons.calculate_rounded, color: Color(0xFF7C3AED), size: 20),
                 ),
-                title: const Text('Gastos & Venta de Productos', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                subtitle: const Text('Flujo de caja y auditoría financiera', style: TextStyle(fontSize: 12)),
+                title: const Text('Calculadora Colorimetría', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                subtitle: const Text('Motor químico y cálculo de fórmulas de color', style: TextStyle(fontSize: 12)),
                 onTap: () {
                   Navigator.of(ctx).pop();
                   setState(() => _currentIndex = 4);
+                },
+              ),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(10)),
+                  child: const Icon(Icons.people_alt_rounded, color: Color(0xFF2563EB), size: 20),
+                ),
+                title: const Text('Clientas Registradas', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                subtitle: const Text('Historial de visitas y promociones por WhatsApp', style: TextStyle(fontSize: 12)),
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  setState(() => _currentIndex = 5);
                 },
               ),
               ListTile(
@@ -266,7 +303,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 subtitle: const Text('Descuentos vigentes para clientas', style: TextStyle(fontSize: 12)),
                 onTap: () {
                   Navigator.of(ctx).pop();
-                  setState(() => _currentIndex = 5);
+                  setState(() => _currentIndex = 6);
                 },
               ),
               ListTile(
@@ -279,7 +316,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 subtitle: const Text('Portafolio visual y capacitaciones', style: TextStyle(fontSize: 12)),
                 onTap: () {
                   Navigator.of(ctx).pop();
-                  setState(() => _currentIndex = 6);
+                  setState(() => _currentIndex = 7);
                 },
               ),
             ],

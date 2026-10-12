@@ -6,12 +6,15 @@ import '../models/cita.dart';
 import '../models/evento_nota.dart';
 import '../providers/app_state_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/edit_appointment_dialog.dart';
 import '../widgets/new_appointment_dialog.dart';
 import '../widgets/new_evento_dialog.dart';
 import '../widgets/status_badge.dart';
 
 class AgendaTab extends StatefulWidget {
-  const AgendaTab({super.key});
+  final Function(int tabIndex, {Cita? citaParaCalcular})? onNavigateToTab;
+
+  const AgendaTab({super.key, this.onNavigateToTab});
 
   @override
   State<AgendaTab> createState() => _AgendaTabState();
@@ -21,9 +24,10 @@ class _AgendaTabState extends State<AgendaTab> {
   DateTime _selectedDate = DateTime.now();
   late DateTime _weekStart;
 
+  // 8 AM to 8 PM slots
   final List<String> _timeSlots = [
     '08:00', '09:00', '10:00', '11:00', '12:00', '13:00',
-    '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'
+    '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00',
   ];
 
   @override
@@ -33,7 +37,6 @@ class _AgendaTabState extends State<AgendaTab> {
   }
 
   DateTime _calculateWeekStart(DateTime date) {
-    // Find Monday of the current week
     return date.subtract(Duration(days: date.weekday - 1));
   }
 
@@ -58,17 +61,70 @@ class _AgendaTabState extends State<AgendaTab> {
     });
   }
 
+  int _timeToMinutes(String timeStr) {
+    if (timeStr.trim().isEmpty) return -1;
+    final clean = timeStr.trim();
+    final upper = clean.toUpperCase();
+    final isPM = upper.contains('PM');
+    final isAM = upper.contains('AM');
+    final numbersOnly = clean.replaceAll(RegExp(r'[^0-9:]'), '');
+    final parts = numbersOnly.split(':');
+    if (parts.isEmpty || parts[0].isEmpty) return -1;
+    int h = int.tryParse(parts[0]) ?? -1;
+    if (h < 0) return -1;
+    int m = parts.length > 1 ? (int.tryParse(parts[1]) ?? 0) : 0;
+    if (isPM && h < 12) h += 12;
+    if (isAM && h == 12) h = 0;
+    return h * 60 + m;
+  }
+
+  String _minutesToTime(int totalMins) {
+    final h = (totalMins ~/ 60).toString().padLeft(2, '0');
+    final m = (totalMins % 60).toString().padLeft(2, '0');
+    return '$h:$m';
+  }
+
+  bool _esServicioColor(Cita cita) {
+    final cat = cita.servicios?.categoria.toLowerCase() ?? '';
+    final nom = cita.servicios?.nombre.toLowerCase() ?? '';
+    return cat.contains('color') ||
+        nom.contains('color') ||
+        nom.contains('tinte') ||
+        nom.contains('decolor') ||
+        nom.contains('mech') ||
+        nom.contains('matiz') ||
+        nom.contains('balan');
+  }
+
+  void _openNewCitaDialog() async {
+    final result = await showDialog<String>(
+      context: context,
+      builder: (_) => NewAppointmentDialog(initialDate: _selectedDate),
+    );
+    if (result == 'open_calculadora') {
+      widget.onNavigateToTab?.call(4);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<AppStateProvider>(context);
     final citas = provider.citas;
     final eventosNotas = provider.eventosNotas;
-
     final selectedDateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
 
-    // Filter appointments and events for selected date
-    final citasDelDia = citas.where((c) => c.fechaCita == selectedDateStr).toList();
-    final eventosDelDia = eventosNotas.where((e) => e.fecha == selectedDateStr).toList();
+    final citasDelDia = citas.where((c) {
+      if (c.fechaCita.trim().isEmpty) return false;
+      final cleanDate = c.fechaCita.split('T')[0].split(' ')[0].trim();
+      return cleanDate == selectedDateStr && c.estado.toLowerCase() != 'cancelada';
+    }).toList()
+      ..sort((a, b) => _timeToMinutes(a.horaInicio).compareTo(_timeToMinutes(b.horaInicio)));
+
+    final eventosDelDia = eventosNotas.where((e) {
+      if (e.fecha.trim().isEmpty) return false;
+      final cleanDate = e.fecha.split('T')[0].split(' ')[0].trim();
+      return cleanDate == selectedDateStr;
+    }).toList();
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -77,12 +133,10 @@ class _AgendaTabState extends State<AgendaTab> {
         children: [
           FloatingActionButton.small(
             heroTag: 'fab_evento',
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (_) => NewEventoDialog(initialFecha: selectedDateStr),
-              );
-            },
+            onPressed: () => showDialog(
+              context: context,
+              builder: (_) => NewEventoDialog(initialFecha: selectedDateStr),
+            ),
             backgroundColor: const Color(0xFF3B82F6),
             foregroundColor: Colors.white,
             tooltip: 'Anotar Evento / Bloqueo',
@@ -91,12 +145,7 @@ class _AgendaTabState extends State<AgendaTab> {
           const SizedBox(height: 10),
           FloatingActionButton.extended(
             heroTag: 'fab_cita',
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (_) => const NewAppointmentDialog(),
-              );
-            },
+            onPressed: _openNewCitaDialog,
             backgroundColor: AppTheme.primary,
             foregroundColor: Colors.white,
             icon: const Icon(Icons.add_rounded),
@@ -113,9 +162,9 @@ class _AgendaTabState extends State<AgendaTab> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ═════════════════════════════════════════════════════════
-              // 1. CABECERA & CONTROLES DE SEMANA
-              // ═════════════════════════════════════════════════════════
+              // ══════════════════════════════════════════
+              // 1. CABECERA SEMANAL
+              // ══════════════════════════════════════════
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -166,17 +215,14 @@ class _AgendaTabState extends State<AgendaTab> {
                               color: AppTheme.primaryLight,
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: const Text('HOY', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.primary)),
+                            child: const Text('HOY',
+                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.primary)),
                           ),
                         ),
                       ],
                     ),
-
                     const SizedBox(height: 12),
-
-                    // ═════════════════════════════════════════════════════════
-                    // 2. STRIP SEMANAL (LUNES A DOMINGO CON INDICADORES DE COLOR)
-                    // ═════════════════════════════════════════════════════════
+                    // Strip semanal
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: List.generate(7, (index) {
@@ -184,11 +230,8 @@ class _AgendaTabState extends State<AgendaTab> {
                         final dayStr = DateFormat('yyyy-MM-dd').format(dayDate);
                         final isSelected = DateFormat('yyyy-MM-dd').format(_selectedDate) == dayStr;
                         final isToday = DateFormat('yyyy-MM-dd').format(DateTime.now()) == dayStr;
-
-                        // Check if day has appointments or events
-                        final hasCitas = citas.any((c) => c.fechaCita == dayStr);
+                        final hasCitas = citas.any((c) => c.fechaCita == dayStr && c.estado != 'cancelada');
                         final hasEventos = eventosNotas.any((e) => e.fecha == dayStr);
-
                         return Expanded(
                           child: InkWell(
                             onTap: () => setState(() => _selectedDate = dayDate),
@@ -232,8 +275,6 @@ class _AgendaTabState extends State<AgendaTab> {
                                     ),
                                   ),
                                   const SizedBox(height: 6),
-
-                                  // Indicator Dots (Color Badges)
                                   Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
@@ -270,33 +311,43 @@ class _AgendaTabState extends State<AgendaTab> {
                 ),
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
 
-              // Leyenda de colores
+              // Leyenda + botón evento
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4),
                 child: Row(
                   children: [
                     Container(width: 8, height: 8, decoration: const BoxDecoration(color: Color(0xFFEF4444), shape: BoxShape.circle)),
                     const SizedBox(width: 4),
-                    const Text('Citas Clientes', style: TextStyle(fontSize: 10, color: AppTheme.textMuted, fontWeight: FontWeight.bold)),
-                    const SizedBox(width: 14),
+                    const Text('Citas', style: TextStyle(fontSize: 10, color: AppTheme.textMuted, fontWeight: FontWeight.bold)),
+                    const SizedBox(width: 12),
                     Container(width: 8, height: 8, decoration: const BoxDecoration(color: Color(0xFF3B82F6), shape: BoxShape.circle)),
                     const SizedBox(width: 4),
-                    const Text('Eventos / Bloqueos', style: TextStyle(fontSize: 10, color: AppTheme.textMuted, fontWeight: FontWeight.bold)),
+                    const Text('Eventos', style: TextStyle(fontSize: 10, color: AppTheme.textMuted, fontWeight: FontWeight.bold)),
+                    const SizedBox(width: 12),
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(colors: [Color(0xFFBE185D), Color(0xFF7C3AED)]),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Text('Color', style: TextStyle(fontSize: 10, color: AppTheme.textMuted, fontWeight: FontWeight.bold)),
                     const Spacer(),
                     InkWell(
-                      onTap: () {
-                        showDialog(
-                          context: context,
-                          builder: (_) => NewEventoDialog(initialFecha: selectedDateStr),
-                        );
-                      },
+                      onTap: () => showDialog(
+                        context: context,
+                        builder: (_) => NewEventoDialog(initialFecha: selectedDateStr),
+                      ),
                       child: const Row(
                         children: [
                           Icon(Icons.add_alert_rounded, size: 14, color: AppTheme.primary),
                           SizedBox(width: 4),
-                          Text('Anotar Evento', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.primary)),
+                          Text('Anotar Evento',
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.primary)),
                         ],
                       ),
                     ),
@@ -304,9 +355,9 @@ class _AgendaTabState extends State<AgendaTab> {
                 ),
               ),
 
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
 
-              // Selected Date Banner Header
+              // Cabecera fecha seleccionada
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
@@ -322,99 +373,147 @@ class _AgendaTabState extends State<AgendaTab> {
                       style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.textMain),
                     ),
                     Text(
-                      '${citasDelDia.length} citas | ${eventosDelDia.length} eventos',
+                      '${citasDelDia.length} citas · ${eventosDelDia.length} eventos',
                       style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.primary),
                     ),
                   ],
                 ),
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
 
-              // ═════════════════════════════════════════════════════════
-              // 3. DESGLOSE POR HORAS DEL DÍA (TIMELINE DE 08:00 A 20:00)
-              // ═════════════════════════════════════════════════════════
+              // ══════════════════════════════════════════
+              // 2. TIMELINE DEL DÍA (8 AM – 8 PM)
+              //    Las tarjetas completas con botones van
+              //    DENTRO del slot de inicio de la cita.
+              // ══════════════════════════════════════════
               ListView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: _timeSlots.length,
                 itemBuilder: (context, slotIndex) {
                   final slotTime = _timeSlots[slotIndex];
+                  final slotStartMins = _timeToMinutes(slotTime);
+                  final slotEndMins = slotStartMins + 60;
 
-                  // Match appointments that fall in this hour slot
-                  final citasInSlot = citasDelDia.where((c) {
-                    final ini = c.horaInicio.length >= 5 ? c.horaInicio.substring(0, 5) : c.horaInicio;
-                    return ini == slotTime;
+                  // Citas que EMPIEZAN en este slot
+                  final citasQueEmpiezanAqui = citasDelDia.where((c) {
+                    final ini = _timeToMinutes(c.horaInicio);
+                    return ini >= slotStartMins && ini < slotEndMins;
                   }).toList();
 
-                  // Match personal events that fall in this hour slot
-                  final eventosInSlot = eventosDelDia.where((e) {
-                    final ini = e.horaInicio.length >= 5 ? e.horaInicio.substring(0, 5) : e.horaInicio;
-                    return ini == slotTime;
+                  // Citas que se EXTIENDEN a este slot (no empiezan aquí)
+                  final citasEnCurso = citasDelDia.where((c) {
+                    final ini = _timeToMinutes(c.horaInicio);
+                    int fin = _timeToMinutes(c.horaFin);
+                    if (fin <= ini) fin = ini + (c.servicios?.duracionMinutos ?? 60);
+                    return ini < slotStartMins && fin > slotStartMins;
                   }).toList();
 
-                  final hasItems = citasInSlot.isNotEmpty || eventosInSlot.isNotEmpty;
+                  // Eventos que abarcan este slot
+                  final eventosEnSlot = eventosDelDia.where((e) {
+                    final ini = _timeToMinutes(e.horaInicio);
+                    int fin = _timeToMinutes(e.horaFin);
+                    if (fin <= ini) fin = ini + 60;
+                    return ini < slotEndMins && fin > slotStartMins;
+                  }).toList();
 
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 10),
+                  final hasContent = citasQueEmpiezanAqui.isNotEmpty ||
+                      citasEnCurso.isNotEmpty ||
+                      eventosEnSlot.isNotEmpty;
+
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Hour Label Column
+                        // Hora
                         SizedBox(
-                          width: 50,
-                          child: Text(
-                            slotTime,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: hasItems ? AppTheme.primary : AppTheme.textMuted,
+                          width: 48,
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 10),
+                            child: Text(
+                              slotTime,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: hasContent ? AppTheme.primary : const Color(0xFFD1D5DB),
+                              ),
                             ),
                           ),
                         ),
-
-                        // Timeline Line
-                        Container(
-                          width: 2,
-                          height: hasItems ? 90 : 36,
-                          color: hasItems ? AppTheme.primary : const Color(0xFFE5E7EB),
-                          margin: const EdgeInsets.only(right: 12),
+                        // Línea de tiempo
+                        Column(
+                          children: [
+                            Container(
+                              width: 10,
+                              height: 10,
+                              margin: const EdgeInsets.only(top: 11),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: hasContent ? AppTheme.primary : const Color(0xFFE5E7EB),
+                                border: Border.all(
+                                  color: hasContent ? AppTheme.primary : const Color(0xFFD1D5DB),
+                                  width: 2,
+                                ),
+                              ),
+                            ),
+                            Container(
+                              width: 2,
+                              height: hasContent ? null : 32,
+                              constraints: hasContent ? const BoxConstraints(minHeight: 32) : null,
+                              color: hasContent ? AppTheme.primary.withValues(alpha: 0.3) : const Color(0xFFE5E7EB),
+                            ),
+                          ],
                         ),
-
-                        // Content Cards for this hour
+                        const SizedBox(width: 10),
+                        // Contenido
                         Expanded(
-                          child: !hasItems
-                              ? InkWell(
-                                  onTap: () {
-                                    showDialog(
-                                      context: context,
-                                      builder: (_) => const NewAppointmentDialog(),
-                                    );
-                                  },
-                                  borderRadius: BorderRadius.circular(10),
+                          child: Column(
+                            children: [
+                              // Citas que empiezan en este slot → tarjeta COMPLETA con botones
+                              ...citasQueEmpiezanAqui.map((c) => _buildCitaCardCompleta(context, provider, c)),
+
+                              // Citas en curso → barra de continuación compacta
+                              ...citasEnCurso.map((c) {
+                                int fin = _timeToMinutes(c.horaFin);
+                                if (fin <= 0) fin = _timeToMinutes(c.horaInicio) + (c.servicios?.duracionMinutos ?? 60);
+                                return _buildCitaEnCursoBar(c, _minutesToTime(fin));
+                              }),
+
+                              // Eventos
+                              ...eventosEnSlot.map((e) {
+                                final ini = _timeToMinutes(e.horaInicio);
+                                final isStart = ini >= slotStartMins && ini < slotEndMins;
+                                return _buildEventoBar(context, provider, e, isStart: isStart);
+                              }),
+
+                              // Slot vacío
+                              if (!hasContent)
+                                InkWell(
+                                  onTap: _openNewCitaDialog,
+                                  borderRadius: BorderRadius.circular(8),
                                   child: Container(
-                                    height: 36,
-                                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                                    height: 32,
+                                    margin: const EdgeInsets.only(bottom: 4),
+                                    padding: const EdgeInsets.symmetric(horizontal: 10),
                                     decoration: BoxDecoration(
                                       color: Colors.white,
-                                      borderRadius: BorderRadius.circular(10),
+                                      borderRadius: BorderRadius.circular(8),
                                       border: Border.all(color: const Color(0xFFF3F4F6)),
                                     ),
                                     child: const Row(
                                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                       children: [
-                                        Text('Disponible', style: TextStyle(fontSize: 11, color: Color(0xFF9CA3AF))),
-                                        Icon(Icons.add_circle_outline_rounded, size: 16, color: Color(0xFF9CA3AF)),
+                                        Text('Disponible',
+                                            style: TextStyle(fontSize: 10, color: Color(0xFFD1D5DB))),
+                                        Icon(Icons.add_circle_outline_rounded, size: 14, color: Color(0xFFD1D5DB)),
                                       ],
                                     ),
                                   ),
-                                )
-                              : Column(
-                                  children: [
-                                    ...eventosInSlot.map((e) => _buildEventoCard(context, provider, e)),
-                                    ...citasInSlot.map((c) => _buildCitaCard(context, provider, c)),
-                                  ],
                                 ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -430,148 +529,521 @@ class _AgendaTabState extends State<AgendaTab> {
     );
   }
 
-  Widget _buildEventoCard(BuildContext context, AppStateProvider provider, EventoNota evento) {
+  // ════════════════════════════════════════════════════════════════
+  // TARJETA COMPLETA DE CITA (aparece en el slot de inicio)
+  // Con todos los botones de acción estilo dashboard
+  // ════════════════════════════════════════════════════════════════
+  Widget _buildCitaCardCompleta(BuildContext context, AppStateProvider provider, Cita cita) {
+    String horaFinStr = cita.horaFin;
+    if (horaFinStr.isEmpty) {
+      final ini = _timeToMinutes(cita.horaInicio);
+      final dur = cita.servicios?.duracionMinutos ?? 60;
+      horaFinStr = _minutesToTime(ini + dur);
+    }
+
+    final esPagado = cita.estadoPago == 'pagado' || cita.estado == 'realizada';
+    final esColor = _esServicioColor(cita);
+
+    final Color accentColor = esPagado
+        ? const Color(0xFF64748B)
+        : (esColor ? const Color(0xFF7C3AED) : AppTheme.primary);
+    final Color accentBg = esPagado
+        ? const Color(0xFFE2E8F0)
+        : (esColor ? const Color(0xFFF5F3FF) : const Color(0xFFFDF2F8));
+    final Color accentBorder = esPagado
+        ? const Color(0xFFCBD5E1)
+        : (esColor ? const Color(0xFFDDD6FE) : const Color(0xFFFBCFE8));
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFEFF6FF),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFBFDBFE)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: const Color(0xFF3B82F6),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(Icons.event_note_rounded, color: Colors.white, size: 16),
+        gradient: esPagado
+            ? const LinearGradient(
+                colors: [Color(0xFFF8FAFC), Color(0xFFE2E8F0)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              )
+            : null,
+        color: esPagado ? null : Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: esPagado ? const Color(0xFFCBD5E1) : accentColor.withValues(alpha: 0.25),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: esPagado ? Colors.black.withValues(alpha: 0.03) : accentColor.withValues(alpha: 0.06),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
           ),
-          const SizedBox(width: 10),
-          Expanded(
+        ],
+      ),
+      child: Column(
+        children: [
+          // Si es servicio de color → banner de color
+          if (esColor)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+              decoration: BoxDecoration(
+                gradient: esPagado
+                    ? const LinearGradient(
+                        colors: [Color(0xFF64748B), Color(0xFF475569)],
+                      )
+                    : const LinearGradient(
+                        colors: [Color(0xFF7C3AED), Color(0xFFBE185D)],
+                      ),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    esPagado ? Icons.check_circle_rounded : Icons.palette_rounded,
+                    color: Colors.white,
+                    size: 13,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    esPagado ? 'SERVICIO DE COLOR · PAGADO' : 'SERVICIO DE COLOR / COLORIMETRÍA',
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+          Padding(
+            padding: const EdgeInsets.all(14),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      evento.titulo,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1E3A8A)),
+                    // Badge de hora
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: accentBg,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: accentBorder),
+                      ),
+                      child: Column(
+                        children: [
+                          Text(
+                            cita.horaInicio,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              color: accentColor,
+                            ),
+                          ),
+                          Text(
+                            horaFinStr,
+                            style: const TextStyle(fontSize: 10, color: AppTheme.textMuted),
+                          ),
+                        ],
+                      ),
                     ),
-                    Text(
-                      '${evento.horaInicio} - ${evento.horaFin}',
-                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)),
+                    const SizedBox(width: 12),
+                    // Info principal
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  cita.clienteNombre,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                    color: esPagado ? const Color(0xFF334155) : AppTheme.textMain,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              Text(
+                                '\$${cita.precioFinal.toStringAsFixed(2)}',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                  color: accentColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            cita.servicios?.nombre ?? 'Servicio General',
+                            style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              StatusBadge(status: cita.estado),
+                              const SizedBox(width: 6),
+                              StatusBadge(status: cita.estadoPago, isPayment: true),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
-                if (evento.descripcion != null && evento.descripcion!.isNotEmpty)
-                  Text(
-                    evento.descripcion!,
-                    style: const TextStyle(fontSize: 11, color: Color(0xFF3B82F6)),
-                  ),
+
+                const SizedBox(height: 10),
+                Divider(
+                  height: 1,
+                  color: esPagado ? const Color(0xFFCBD5E1).withValues(alpha: 0.5) : const Color(0xFFF3F4F6),
+                ),
+                const SizedBox(height: 8),
+
+                // ═══ BOTONES DE ACCIÓN ═══
+                _buildActionButtons(context, provider, cita, esColor, esPagado),
               ],
             ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Color(0xFF93C5FD)),
-            onPressed: () => provider.removeEventoNota(evento.id),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildCitaCard(BuildContext context, AppStateProvider provider, Cita cita) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildActionButtons(
+      BuildContext context, AppStateProvider provider, Cita cita, bool esColor, bool esPagado) {
+    // Si ya está pagado/realizado → mostrar badge plomito y botón WhatsApp
+    if (esPagado) {
+      return Row(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  cita.clienteNombre,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.textMain),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 9),
+              decoration: BoxDecoration(
+                color: const Color(0xFFCBD5E1).withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFF94A3B8).withValues(alpha: 0.5)),
               ),
-              const SizedBox(width: 8),
-              StatusBadge(status: cita.estado),
-            ],
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.check_circle_rounded, color: Color(0xFF334155), size: 16),
+                  SizedBox(width: 6),
+                  Text(
+                    'Pagado y Finalizado',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
+                  ),
+                ],
+              ),
+            ),
           ),
-          const SizedBox(height: 2),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  '${cita.servicios?.nombre ?? 'Servicio General'} (${cita.horaInicio} - ${cita.horaFin})',
-                  style: const TextStyle(fontSize: 11, color: AppTheme.primary, fontWeight: FontWeight.w600),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+          const SizedBox(width: 8),
+          InkWell(
+            onTap: () async {
+              final cleanPhone = cita.clienteTelefono.replaceAll(RegExp(r'[^0-9]'), '');
+              final uri = Uri.parse('https://wa.me/$cleanPhone');
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              }
+            },
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFECFDF5),
+                borderRadius: BorderRadius.circular(10),
               ),
-              const SizedBox(width: 8),
-              Text(
-                '\$${cita.precioFinal.toStringAsFixed(2)}',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppTheme.textMain),
-              ),
-            ],
+              child: const Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFF059669), size: 18),
+            ),
           ),
-          const SizedBox(height: 6),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              InkWell(
-                onTap: () async {
-                  final cleanPhone = cita.clienteTelefono.replaceAll(RegExp(r'[^0-9]'), '');
-                  final uri = Uri.parse(
-                      'https://wa.me/$cleanPhone?text=${Uri.encodeComponent('Hola ${cita.clienteNombre}, te saludamos de Peluquería Raquel para confirmar tu cita el ${cita.fechaCita} a las ${cita.horaInicio}.')}');
-                  if (await canLaunchUrl(uri)) {
-                    await launchUrl(uri, mode: LaunchMode.externalApplication);
-                  }
+        ],
+      );
+    }
+
+    return Row(
+      children: [
+        // WhatsApp
+        Expanded(
+          child: _buildActionBtn(
+            icon: Icons.chat_bubble_outline_rounded,
+            label: 'WhatsApp',
+            bgColor: const Color(0xFFECFDF5),
+            fgColor: const Color(0xFF059669),
+            onTap: () async {
+              final cleanPhone = cita.clienteTelefono.replaceAll(RegExp(r'[^0-9]'), '');
+              final uri = Uri.parse(
+                  'https://wa.me/$cleanPhone?text=${Uri.encodeComponent('¡Hola ${cita.clienteNombre}! Te saludamos de Peluquería Raquel para confirmar tu cita el ${cita.fechaCita} a las ${cita.horaInicio}. 🙏')}');
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              }
+            },
+          ),
+        ),
+        const SizedBox(width: 8),
+
+        // Botón central según estado
+        if (cita.estado == 'pendiente')
+          Expanded(
+            child: _buildActionBtn(
+              icon: Icons.check_circle_outline_rounded,
+              label: 'Confirmar',
+              bgColor: AppTheme.primaryLight,
+              fgColor: AppTheme.primary,
+              onTap: () => provider.updateCitaStatus(cita.id, estado: 'confirmada'),
+            ),
+          )
+        else if (cita.estado == 'confirmada') ...[
+          // Si es Color y no tiene precio aún → Calcular Precio
+          if (esColor && (cita.precioFinal == 0 || cita.precioFinal <= 0.0))
+            Expanded(
+              child: _buildActionBtn(
+                icon: Icons.calculate_rounded,
+                label: 'Calcular Precio',
+                bgColor: const Color(0xFFFFEDD5),
+                fgColor: const Color(0xFFEA580C),
+                onTap: () {
+                  // Va a la calculadora (tab index 4)
+                  widget.onNavigateToTab?.call(4, citaParaCalcular: cita);
                 },
-                child: const Row(
-                  children: [
-                    Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFF059669), size: 14),
-                    SizedBox(width: 4),
-                    Text('WhatsApp', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF059669))),
-                  ],
+              ),
+            )
+          else ...[
+            // En vez de "Realizada", botón "Pagado"
+            Expanded(
+              child: _buildActionBtn(
+                icon: Icons.payments_rounded,
+                label: 'Pagado',
+                bgColor: const Color(0xFFD1FAE5),
+                fgColor: const Color(0xFF047857),
+                onTap: () => provider.updateCitaStatus(
+                  cita.id,
+                  estado: 'realizada',
+                  estadoPago: 'pagado',
                 ),
               ),
-              if (cita.estado == 'pendiente')
-                InkWell(
-                  onTap: () => provider.updateCitaStatus(cita.id, estado: 'confirmada'),
-                  child: const Text('Confirmar ✓', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.primary)),
-                )
-              else if (cita.estado == 'confirmada')
-                InkWell(
-                  onTap: () => provider.updateCitaStatus(cita.id, estado: 'realizada'),
-                  child: const Text('Realizada ✓', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF047857))),
+            ),
+            // Si es color y ya tiene precio, permitimos recalcular si lo desea
+            if (esColor) ...[
+              const SizedBox(width: 6),
+              InkWell(
+                onTap: () => widget.onNavigateToTab?.call(4, citaParaCalcular: cita),
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF5F3FF),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFDDD6FE)),
+                  ),
+                  child: const Icon(Icons.calculate_outlined, color: Color(0xFF7C3AED), size: 18),
                 ),
+              ),
             ],
+          ],
+        ]
+        else if (cita.estado == 'calcular')
+          Expanded(
+            child: _buildActionBtn(
+              icon: Icons.calculate_rounded,
+              label: 'Ir a Calcular',
+              bgColor: const Color(0xFFFFEDD5),
+              fgColor: const Color(0xFFEA580C),
+              onTap: () => widget.onNavigateToTab?.call(4, citaParaCalcular: cita),
+            ),
+          ),
+
+        // Botón cancelar (solo pendiente y confirmada)
+        if (cita.estado == 'pendiente' || cita.estado == 'confirmada') ...[
+          const SizedBox(width: 8),
+          InkWell(
+            onTap: () => showDialog(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                title: const Text('¿Cancelar Cita?'),
+                content: Text('¿Estás segura de cancelar la cita de ${cita.clienteNombre}?'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('No', style: TextStyle(color: AppTheme.textMuted)),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      provider.updateCitaStatus(cita.id, estado: 'cancelada');
+                      Navigator.pop(ctx);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.danger,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: const Text('Sí, Cancelar'),
+                  ),
+                ],
+              ),
+            ),
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFE4E6),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.cancel_outlined, color: Color(0xFFDC2626), size: 18),
+            ),
+          ),
+        ],
+
+        // Botón editar cita (disponible siempre)
+        const SizedBox(width: 8),
+        InkWell(
+          onTap: () => showDialog(
+            context: context,
+            builder: (ctx) => EditAppointmentDialog(cita: cita),
+          ),
+          borderRadius: BorderRadius.circular(10),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: const Icon(Icons.edit_outlined, color: AppTheme.textMain, size: 18),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionBtn({
+    required IconData icon,
+    required String label,
+    required Color bgColor,
+    required Color fgColor,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: fgColor, size: 15),
+            const SizedBox(width: 5),
+            Text(label,
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: fgColor)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ════════════════════════════════════════════════
+  // BARRA DE CITA EN CURSO (slots de continuación)
+  // ════════════════════════════════════════════════
+  Widget _buildCitaEnCursoBar(Cita cita, String horaFinStr) {
+    final esPagado = cita.estadoPago == 'pagado' || cita.estado == 'realizada';
+    final esColor = _esServicioColor(cita);
+    final Color barColor = esPagado
+        ? const Color(0xFF64748B)
+        : (esColor ? const Color(0xFF7C3AED) : const Color(0xFFBE185D));
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        gradient: esPagado
+            ? const LinearGradient(
+                colors: [Color(0xFFF8FAFC), Color(0xFFE2E8F0)],
+              )
+            : null,
+        color: esPagado
+            ? null
+            : (esColor ? const Color(0xFFF5F3FF) : const Color(0xFFFFF1F2)),
+        borderRadius: BorderRadius.circular(8),
+        border: Border(left: BorderSide(color: barColor, width: 4)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            esPagado ? Icons.check_circle_outline_rounded : Icons.schedule_rounded,
+            size: 12,
+            color: barColor,
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              '${cita.clienteNombre} · hasta $horaFinStr ${esPagado ? "(Pagado)" : ""}',
+              style: TextStyle(
+                  fontSize: 10, fontWeight: FontWeight.bold, color: barColor),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ],
       ),
+    );
+  }
+
+  // ════════════════════════════════════════════════
+  // BARRA DE EVENTO
+  // ════════════════════════════════════════════════
+  Widget _buildEventoBar(BuildContext context, AppStateProvider provider, EventoNota evento,
+      {required bool isStart}) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 4),
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: isStart ? 10 : 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEFF6FF),
+        borderRadius: BorderRadius.circular(10),
+        border: Border(left: const BorderSide(color: Color(0xFF2563EB), width: 4)),
+      ),
+      child: isStart
+          ? Row(
+              children: [
+                const Icon(Icons.event_note_rounded, color: Color(0xFF2563EB), size: 16),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(evento.titulo,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF1E3A8A))),
+                      Text('${evento.horaInicio} - ${evento.horaFin}',
+                          style: const TextStyle(fontSize: 10, color: Color(0xFF2563EB))),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline_rounded, size: 16, color: Color(0xFF93C5FD)),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: () => provider.removeEventoNota(evento.id),
+                ),
+              ],
+            )
+          : Row(
+              children: [
+                const Icon(Icons.lock_clock_outlined, size: 12, color: Color(0xFF2563EB)),
+                const SizedBox(width: 6),
+                Text('${evento.titulo} · hasta ${evento.horaFin}',
+                    style: const TextStyle(
+                        fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF1E40AF))),
+              ],
+            ),
     );
   }
 }

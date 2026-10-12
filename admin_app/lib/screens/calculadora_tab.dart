@@ -1,11 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/calculo_precio.dart';
+import '../models/cita.dart';
+import '../providers/app_state_provider.dart';
 import '../theme/app_theme.dart';
-import '../widgets/new_appointment_dialog.dart';
 
 class CalculadoraTab extends StatefulWidget {
-  const CalculadoraTab({super.key});
+  final Cita? citaParaCalcular;
+  final Function(int tabIndex)? onNavigateToTab;
+
+  const CalculadoraTab({
+    super.key,
+    this.citaParaCalcular,
+    this.onNavigateToTab,
+  });
 
   @override
   State<CalculadoraTab> createState() => _CalculadoraTabState();
@@ -192,6 +201,9 @@ class _CalculadoraTabState extends State<CalculadoraTab> {
 
   @override
   Widget build(BuildContext context) {
+    final provider = Provider.of<AppStateProvider>(context);
+    final cita = widget.citaParaCalcular;
+
     return Scaffold(
       backgroundColor: AppTheme.background,
       body: SingleChildScrollView(
@@ -322,24 +334,99 @@ class _CalculadoraTabState extends State<CalculadoraTab> {
 
                   const SizedBox(height: 16),
 
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        showDialog(
-                          context: context,
-                          builder: (_) => const NewAppointmentDialog(),
-                        );
-                      },
-                      icon: const Icon(Icons.calendar_today_rounded, size: 16),
-                      label: Text('Agendar Cita (\$${(_resultado?.precioFinal ?? 0.0).toStringAsFixed(2)})'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                  // ═══ Banner de cita pendiente de cobro ═══
+                  if (cita != null) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF5F3FF),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFDDD6FE)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.person_rounded, size: 16, color: Color(0xFF7C3AED)),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  'Cita de ${cita.clienteNombre}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                    color: Color(0xFF4C1D95),
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${cita.servicios?.nombre ?? 'Color'} · ${cita.fechaCita} ${cita.horaInicio}',
+                            style: const TextStyle(fontSize: 11, color: Color(0xFF7C3AED)),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            'Precio calculado: \$${(_resultado?.precioFinal ?? 0.0).toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF4C1D95),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: () async {
+                                final precio = _resultado?.precioFinal ?? 0.0;
+                                await provider.updateCitaPrecio(cita.id, precio);
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        '✅ Precio \$${precio.toStringAsFixed(2)} asignado a la cita de ${cita.clienteNombre}. Ya puedes marcarla como Pagada en Agenda.'),
+                                      backgroundColor: const Color(0xFF047857),
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                }
+                                widget.onNavigateToTab?.call(1);
+                              },
+                              icon: const Icon(Icons.check_circle_rounded, size: 18),
+                              label: Text(
+                                  'Aceptar (\$${(_resultado?.precioFinal ?? 0.0).toStringAsFixed(2)})'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF7C3AED),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 13),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
+                  ] else ...[
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: null,
+                        icon: const Icon(Icons.info_outline_rounded, size: 16),
+                        label: const Text('Abre una cita de color desde la Agenda para guardar el precio'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppTheme.textMuted,
+                          side: const BorderSide(color: Color(0xFFE5E7EB)),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          textStyle: const TextStyle(fontSize: 11),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -357,91 +444,113 @@ class _CalculadoraTabState extends State<CalculadoraTab> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Ajustar Insumos para este Servicio', style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 16),
+                  Text('Insumos y Tiempo de Trabajo', style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 14),
 
-                  // Decolorante Slider
-                  _buildSlider(
+                  // Decolorante Stepper
+                  _buildNumericStepper(
                     title: 'Porciones de Decolorante',
-                    value: _porcionesDecolorante.toDouble(),
+                    subtitle: '\$$_precioDecolorante c/u',
+                    value: _porcionesDecolorante,
                     min: 0,
-                    max: 8,
-                    divisions: 8,
-                    label: '$_porcionesDecolorante porciones',
+                    max: 20,
+                    step: 1,
+                    unit: 'porc.',
                     onChanged: (v) {
                       setState(() => _porcionesDecolorante = v.toInt());
                       _calcular();
                     },
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 12),
 
                   // Tubos de Tinte
-                  _buildSlider(
+                  _buildNumericStepper(
                     title: 'Tubos de Tinte / Matizador',
-                    value: _tubosTinte.toDouble(),
+                    subtitle: '\$$_precioTinte c/u',
+                    value: _tubosTinte,
                     min: 0,
-                    max: 6,
-                    divisions: 6,
-                    label: '$_tubosTinte tubos',
+                    max: 15,
+                    step: 1,
+                    unit: 'tubos',
                     onChanged: (v) {
                       setState(() => _tubosTinte = v.toInt());
                       _calcular();
                     },
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 12),
 
                   // Mezclas de Peróxido
-                  _buildSlider(
-                    title: 'Mezclas de Peróxido / Revelador',
-                    value: _mezclasPeroxido.toDouble(),
+                  _buildNumericStepper(
+                    title: 'Mezclas de Peróxido',
+                    subtitle: '\$$_precioPeroxido c/u',
+                    value: _mezclasPeroxido,
                     min: 0,
-                    max: 8,
-                    divisions: 8,
-                    label: '$_mezclasPeroxido mezclas',
+                    max: 20,
+                    step: 1,
+                    unit: 'mezclas',
                     onChanged: (v) {
                       setState(() => _mezclasPeroxido = v.toInt());
                       _calcular();
                     },
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 12),
 
                   // Horas de Trabajo
-                  _buildSlider(
-                    title: 'Horas Estimadas de Trabajo',
+                  _buildNumericStepper(
+                    title: 'Horas de Trabajo',
+                    subtitle: '\$$_precioHoraManoObra / hora',
                     value: _horasTrabajo,
                     min: 0.5,
-                    max: 8.0,
-                    divisions: 15,
-                    label: '${_horasTrabajo.toStringAsFixed(1)} horas',
+                    max: 14.0,
+                    step: 0.5,
+                    unit: 'horas',
+                    isDecimal: true,
                     onChanged: (v) {
-                      setState(() => _horasTrabajo = v);
+                      setState(() => _horasTrabajo = v.toDouble());
                       _calcular();
                     },
                   ),
                   const SizedBox(height: 14),
 
                   // Costo Extra Insumos
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('Costo Extra Insumos (\$):', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                      SizedBox(
-                        width: 100,
-                        child: TextField(
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          decoration: InputDecoration(
-                            hintText: '0.0',
-                            isDense: true,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                          ),
-                          onChanged: (v) {
-                            setState(() => _costoExtra = double.tryParse(v) ?? 0.0);
-                            _calcular();
-                          },
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AppTheme.border),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Costo Extra Insumos', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                            Text('Tratamientos especiales, ampolletas', style: TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+                          ],
                         ),
-                      ),
-                    ],
+                        SizedBox(
+                          width: 100,
+                          child: TextField(
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            decoration: InputDecoration(
+                              prefixText: '\$ ',
+                              hintText: '0.00',
+                              isDense: true,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                              filled: true,
+                              fillColor: Colors.white,
+                            ),
+                            onChanged: (v) {
+                              setState(() => _costoExtra = double.tryParse(v) ?? 0.0);
+                              _calcular();
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -454,45 +563,95 @@ class _CalculadoraTabState extends State<CalculadoraTab> {
     );
   }
 
-  Widget _buildSlider({
+  Widget _buildNumericStepper({
     required String title,
-    required double value,
-    required double min,
-    required double max,
-    required int divisions,
-    required String label,
-    required ValueChanged<double> onChanged,
+    required String subtitle,
+    required num value,
+    required num min,
+    required num max,
+    required num step,
+    required String unit,
+    bool isDecimal = false,
+    required ValueChanged<num> onChanged,
   }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: AppTheme.primaryLight,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                label,
-                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.primary),
-              ),
+    final displayVal = isDecimal ? value.toStringAsFixed(1) : value.toInt().toString();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppTheme.border),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.textMain)),
+                const SizedBox(height: 1),
+                Text(subtitle, style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+              ],
             ),
-          ],
-        ),
-        Slider(
-          value: value,
-          min: min,
-          max: max,
-          divisions: divisions,
-          activeColor: AppTheme.primary,
-          inactiveColor: const Color(0xFFEFF4FF),
-          onChanged: onChanged,
-        ),
-      ],
+          ),
+          Row(
+            children: [
+              // Botón Menos
+              InkWell(
+                onTap: value > min
+                    ? () => onChanged(isDecimal ? (value - step) : (value - step).round())
+                    : null,
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: value > min ? Colors.white : const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: value > min ? const Color(0xFFCBD5E1) : const Color(0xFFE2E8F0)),
+                  ),
+                  child: Icon(
+                    Icons.remove_rounded,
+                    size: 18,
+                    color: value > min ? AppTheme.textMain : const Color(0xFF94A3B8),
+                  ),
+                ),
+              ),
+              // Caja de número
+              Container(
+                constraints: const BoxConstraints(minWidth: 54),
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                alignment: Alignment.center,
+                child: Text(
+                  '$displayVal $unit',
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.primary),
+                ),
+              ),
+              // Botón Más
+              InkWell(
+                onTap: value < max
+                    ? () => onChanged(isDecimal ? (value + step) : (value + step).round())
+                    : null,
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: value < max ? AppTheme.primary : const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.add_rounded,
+                    size: 18,
+                    color: value < max ? Colors.white : const Color(0xFF94A3B8),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 

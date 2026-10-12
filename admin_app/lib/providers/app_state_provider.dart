@@ -11,6 +11,7 @@ import '../models/reporte_financiero.dart';
 import '../models/galeria_item.dart';
 import '../models/curso_item.dart';
 import '../models/evento_nota.dart';
+import '../models/cliente.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
 
@@ -20,6 +21,7 @@ class AppStateProvider extends ChangeNotifier {
   List<Cita> _citas = [];
   List<Servicio> _servicios = [];
   List<Promocion> _promociones = [];
+  List<Cliente> _clientes = [];
   ReporteFinanciero? _reporte;
   List<Gasto> _gastos = [];
   double _totalGastos = 0.0;
@@ -38,6 +40,7 @@ class AppStateProvider extends ChangeNotifier {
   List<Cita> get citas => _citas;
   List<Servicio> get servicios => _servicios;
   List<Promocion> get promociones => _promociones;
+  List<Cliente> get clientes => _clientes;
   ReporteFinanciero? get reporte => _reporte;
   List<Gasto> get gastos => _gastos;
   double get totalGastos => _totalGastos;
@@ -156,9 +159,23 @@ class AppStateProvider extends ChangeNotifier {
 
   double get balanceNetoEsteMes => totalIngresosEsteMes - gastosEsteMes;
 
+  // Ganancias globales históricas
+  double get gananciasCitas {
+    double total = 0;
+    for (var c in _citas) {
+      if (c.estado == 'realizada' || c.estado == 'completada' || c.estadoPago == 'pagado') {
+        total += c.precioFinal;
+      }
+    }
+    return total;
+  }
+  double get totalGananciasCitas => gananciasCitas;
+  double get totalIngresos => gananciasCitas + _totalVentas;
+
   Future<void> init() async {
     await _api.init();
     await _loadEventosNotas();
+    await _loadAllCaches();
     await loadAllData();
   }
 
@@ -179,6 +196,108 @@ class AppStateProvider extends ChangeNotifier {
       final rawJson = jsonEncode(_eventosNotas.map((e) => e.toJson()).toList());
       await prefs.setString('raquel_eventos_notas', rawJson);
     } catch (_) {}
+  }
+
+  Future<void> _loadAllCaches() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      final rawCitas = prefs.getString('raquel_citas_cache');
+      if (rawCitas != null && rawCitas.isNotEmpty) {
+        final List decoded = jsonDecode(rawCitas);
+        _citas = decoded.map((e) => Cita.fromJson(e)).toList();
+      }
+
+      final rawServicios = prefs.getString('raquel_servicios_cache');
+      if (rawServicios != null && rawServicios.isNotEmpty) {
+        final List decoded = jsonDecode(rawServicios);
+        _servicios = decoded.map((e) => Servicio.fromJson(e)).toList();
+      }
+
+      final rawClientes = prefs.getString('raquel_clientes_cache');
+      if (rawClientes != null && rawClientes.isNotEmpty) {
+        final List decoded = jsonDecode(rawClientes);
+        _clientes = decoded.map((e) => Cliente.fromJson(e)).toList();
+      }
+      _actualizarClientesDesdeCitas();
+    } catch (_) {}
+  }
+
+  Future<void> _saveCitasCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = jsonEncode(_citas.map((c) => c.toJson()).toList());
+      await prefs.setString('raquel_citas_cache', raw);
+      _actualizarClientesDesdeCitas();
+    } catch (_) {}
+  }
+
+  Future<void> _saveServiciosCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = jsonEncode(_servicios.map((s) => s.toJson()).toList());
+      await prefs.setString('raquel_servicios_cache', raw);
+    } catch (_) {}
+  }
+
+  Future<void> _saveClientesCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = jsonEncode(_clientes.map((c) => c.toJson()).toList());
+      await prefs.setString('raquel_clientes_cache', raw);
+    } catch (_) {}
+  }
+
+  void _actualizarClientesDesdeCitas() {
+    final Map<String, Cliente> mapa = {};
+    for (var c in _clientes) {
+      final key = c.telefono.trim().isNotEmpty ? c.telefono.trim() : c.nombre.trim().toLowerCase();
+      if (key.isNotEmpty) mapa[key] = c;
+    }
+    for (var cita in _citas) {
+      final key = cita.clienteTelefono.trim().isNotEmpty ? cita.clienteTelefono.trim() : cita.clienteNombre.trim().toLowerCase();
+      if (key.isEmpty) continue;
+      final existing = mapa[key];
+      final esPagada = cita.estadoPago == 'pagado' || cita.estado == 'completada' || cita.estado == 'realizada';
+      if (existing != null) {
+        mapa[key] = Cliente(
+          id: existing.id,
+          nombre: existing.nombre.isNotEmpty ? existing.nombre : cita.clienteNombre,
+          telefono: existing.telefono.isNotEmpty ? existing.telefono : cita.clienteTelefono,
+          email: existing.email ?? cita.clienteEmail,
+          notas: existing.notas ?? cita.notas,
+          totalCitas: existing.totalCitas + 1,
+          totalGastado: existing.totalGastado + (esPagada ? cita.precioFinal : 0.0),
+          ultimaVisita: cita.fechaCita,
+        );
+      } else {
+        mapa[key] = Cliente(
+          id: cita.id,
+          nombre: cita.clienteNombre,
+          telefono: cita.clienteTelefono,
+          email: cita.clienteEmail,
+          notas: cita.notas,
+          totalCitas: 1,
+          totalGastado: esPagada ? cita.precioFinal : 0.0,
+          ultimaVisita: cita.fechaCita,
+        );
+      }
+    }
+    _clientes = mapa.values.toList();
+    _clientes.sort((a, b) => b.totalCitas.compareTo(a.totalCitas));
+  }
+
+  Future<void> addCliente(Cliente cliente) async {
+    _clientes.removeWhere((c) => c.id == cliente.id || (c.telefono.isNotEmpty && c.telefono == cliente.telefono));
+    _clientes.insert(0, cliente);
+    await _saveClientesCache();
+    notifyListeners();
+  }
+
+  Future<void> removeCliente(String id) async {
+    _clientes.removeWhere((c) => c.id == id);
+    await _saveClientesCache();
+    notifyListeners();
   }
 
   Future<void> addEventoNota(EventoNota evento) async {
@@ -205,6 +324,10 @@ class AppStateProvider extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
 
+    // 1. Cargar caché primero de forma inmediata
+    await _loadAllCaches();
+    notifyListeners();
+
     try {
       final results = await Future.wait([
         _api.getCitas().catchError((_) => <Cita>[]),
@@ -226,8 +349,36 @@ class AppStateProvider extends ChangeNotifier {
         _api.getCursos().catchError((_) => <CursoItem>[]),
       ]);
 
-      _citas = results[0] as List<Cita>;
-      _servicios = results[1] as List<Servicio>;
+      final apiCitas = results[0] as List<Cita>;
+      if (apiCitas.isNotEmpty) {
+        // Fusionar respetando modificaciones locales
+        final Map<String, Cita> merged = {};
+        for (var c in apiCitas) {
+          merged[c.id] = c;
+        }
+        for (var c in _citas) {
+          if (c.estadoPago == 'pagado' || c.estado == 'realizada' || c.estado == 'completada' || c.precioFinal > 0) {
+            merged[c.id] = c;
+          }
+        }
+        _citas = merged.values.toList();
+        _citas.sort((a, b) => (b.fechaCita + b.horaInicio).compareTo(a.fechaCita + a.horaInicio));
+        await _saveCitasCache();
+      }
+
+      final apiServicios = results[1] as List<Servicio>;
+      if (apiServicios.isNotEmpty) {
+        final Map<String, Servicio> mergedS = {};
+        for (var s in apiServicios) {
+          mergedS[s.id] = s;
+        }
+        for (var s in _servicios) {
+          mergedS[s.id] = s;
+        }
+        _servicios = mergedS.values.toList();
+        await _saveServiciosCache();
+      }
+
       _promociones = results[2] as List<Promocion>;
       _reporte = results[3] as ReporteFinanciero;
 
@@ -243,7 +394,8 @@ class AppStateProvider extends ChangeNotifier {
       _galeria = results[6] as List<GaleriaItem>;
       _cursos = results[7] as List<CursoItem>;
 
-      _isBackendConnected = _reporte?.ok == true || _citas.isNotEmpty || _servicios.isNotEmpty;
+      _actualizarClientesDesdeCitas();
+      _isBackendConnected = _reporte?.ok == true || apiCitas.isNotEmpty || apiServicios.isNotEmpty;
     } catch (e) {
       _errorMessage = e.toString();
       _isBackendConnected = false;
@@ -287,21 +439,20 @@ class AppStateProvider extends ChangeNotifier {
 
     final newCita = result['cita'] as Cita;
     _citas.insert(0, newCita);
+    await _saveCitasCache();
     refreshReporte();
     notifyListeners();
     return result;
   }
 
   Future<void> updateCitaStatus(String id, {String? estado, String? estadoPago}) async {
-    // If status changes to realizada or completada, default payment status to pagado
+    // Auto-mark pagado only when directly set to realizada (not calcular)
     final targetPago = estadoPago ?? ((estado == 'realizada' || estado == 'completada') ? 'pagado' : null);
     try {
       final updated = await _api.updateCitaEstado(id, estado: estado, estadoPago: targetPago);
       final index = _citas.indexWhere((c) => c.id == id);
       if (index != -1) {
         _citas[index] = updated;
-        notifyListeners();
-        refreshReporte();
       }
     } catch (_) {
       final index = _citas.indexWhere((c) => c.id == id);
@@ -327,10 +478,81 @@ class AppStateProvider extends ChangeNotifier {
           servicios: c.servicios,
           promociones: c.promociones,
         );
-        notifyListeners();
-        refreshReporte();
       }
     }
+    await _saveCitasCache();
+    refreshReporte();
+    notifyListeners();
+  }
+
+  Future<void> updateCitaPrecio(String id, double precio) async {
+    try {
+      final updated = await _api.updateCitaEstado(id, precioFinal: precio);
+      final index = _citas.indexWhere((c) => c.id == id);
+      if (index != -1) {
+        _citas[index] = updated;
+      }
+    } catch (_) {
+      final index = _citas.indexWhere((c) => c.id == id);
+      if (index != -1) {
+        final c = _citas[index];
+        _citas[index] = Cita(
+          id: c.id,
+          createdAt: c.createdAt,
+          clienteNombre: c.clienteNombre,
+          clienteTelefono: c.clienteTelefono,
+          clienteEmail: c.clienteEmail,
+          servicioId: c.servicioId,
+          promocionId: c.promocionId,
+          fechaCita: c.fechaCita,
+          horaInicio: c.horaInicio,
+          horaFin: c.horaFin,
+          estado: c.estado,
+          estadoPago: c.estadoPago,
+          precioOriginal: precio,
+          descuentoAplicado: c.descuentoAplicado,
+          precioFinal: precio,
+          notas: c.notas,
+          servicios: c.servicios,
+          promociones: c.promociones,
+        );
+      }
+    }
+    await _saveCitasCache();
+    refreshReporte();
+    notifyListeners();
+  }
+
+  Future<void> updateCitaCompleta(Cita cita) async {
+    final Map<String, dynamic> payload = {
+      'cliente_nombre': cita.clienteNombre,
+      'cliente_telefono': cita.clienteTelefono,
+      if (cita.clienteEmail != null) 'cliente_email': cita.clienteEmail,
+      'servicio_id': cita.servicioId,
+      'fecha_cita': cita.fechaCita,
+      'hora_inicio': cita.horaInicio,
+      'hora_fin': cita.horaFin,
+      'estado': (cita.estado == 'realizada' || cita.estado == 'pagada' ? 'completada' : cita.estado),
+      'estado_pago': cita.estadoPago,
+      'precio_final': cita.precioFinal,
+      if (cita.notas != null) 'notas': cita.notas,
+    };
+
+    try {
+      final updated = await _api.updateCita(cita.id, payload);
+      final index = _citas.indexWhere((c) => c.id == cita.id);
+      if (index != -1) {
+        _citas[index] = updated;
+      }
+    } catch (_) {
+      final index = _citas.indexWhere((c) => c.id == cita.id);
+      if (index != -1) {
+        _citas[index] = cita;
+      }
+    }
+    await _saveCitasCache();
+    refreshReporte();
+    notifyListeners();
   }
 
   Future<void> createServicioSinCita({
@@ -365,6 +587,7 @@ class AppStateProvider extends ChangeNotifier {
       imagenUrl: imagenUrl,
     );
     _servicios.add(s);
+    await _saveServiciosCache();
     notifyListeners();
     return s;
   }
@@ -375,6 +598,7 @@ class AppStateProvider extends ChangeNotifier {
     required String categoria,
     String? descripcion,
     required double precioBase,
+    int? duracionMinutos,
   }) async {
     try {
       final updated = await _api.updateServicio(
@@ -387,7 +611,6 @@ class AppStateProvider extends ChangeNotifier {
       final idx = _servicios.indexWhere((s) => s.id == id);
       if (idx != -1) {
         _servicios[idx] = updated;
-        notifyListeners();
       }
     } catch (_) {
       final idx = _servicios.indexWhere((s) => s.id == id);
@@ -398,12 +621,13 @@ class AppStateProvider extends ChangeNotifier {
           nombre: nombre,
           categoria: categoria,
           descripcion: descripcion,
-          duracionMinutos: existing.duracionMinutos,
+          duracionMinutos: duracionMinutos ?? existing.duracionMinutos,
           precioBase: precioBase,
         );
-        notifyListeners();
       }
     }
+    await _saveServiciosCache();
+    notifyListeners();
   }
 
   Future<void> deleteServicio(String id) async {
@@ -411,6 +635,7 @@ class AppStateProvider extends ChangeNotifier {
       await _api.deleteServicio(id);
     } catch (_) {}
     _servicios.removeWhere((s) => s.id == id);
+    await _saveServiciosCache();
     notifyListeners();
   }
 
@@ -526,6 +751,35 @@ class AppStateProvider extends ChangeNotifier {
     return g;
   }
 
+  Future<void> updateGasto({
+    required String id,
+    required double monto,
+    required String categoria,
+    String? concepto,
+  }) async {
+    final updated = await _api.updateGasto(id, monto: monto, categoria: categoria, concepto: concepto);
+    final idx = _gastos.indexWhere((g) => g.id == id);
+    if (idx != -1) {
+      _totalGastos = _totalGastos - _gastos[idx].monto + updated.monto;
+      _gastos[idx] = updated;
+    }
+    refreshReporte();
+    notifyListeners();
+  }
+
+  Future<void> deleteGasto(String id) async {
+    try {
+      await _api.deleteGasto(id);
+    } catch (_) {}
+    final idx = _gastos.indexWhere((g) => g.id == id);
+    if (idx != -1) {
+      _totalGastos -= _gastos[idx].monto;
+      _gastos.removeAt(idx);
+    }
+    refreshReporte();
+    notifyListeners();
+  }
+
   // Ventas Actions
   Future<VentaProducto> createVentaProducto({
     required String nombre,
@@ -547,5 +801,75 @@ class AppStateProvider extends ChangeNotifier {
     refreshReporte();
     notifyListeners();
     return v;
+  }
+
+  Future<void> updateVentaProducto({
+    required String id,
+    required String nombre,
+    required double costo,
+    required double precio,
+    int cantidad = 1,
+    String? nombreCliente,
+  }) async {
+    final updated = await _api.updateVentaProducto(
+      id,
+      nombre: nombre,
+      costo: costo,
+      precio: precio,
+      cantidad: cantidad,
+      nombreCliente: nombreCliente,
+    );
+    final idx = _ventas.indexWhere((v) => v.id == id);
+    if (idx != -1) {
+      final old = _ventas[idx];
+      _totalVentas = _totalVentas - (old.precioVenta * old.cantidad) + (updated.precioVenta * updated.cantidad);
+      _gananciaVentas = _gananciaVentas - ((old.precioVenta - old.precioCosto) * old.cantidad) + ((updated.precioVenta - updated.precioCosto) * updated.cantidad);
+      _ventas[idx] = updated;
+    }
+    refreshReporte();
+    notifyListeners();
+  }
+
+  Future<void> deleteVentaProducto(String id) async {
+    try {
+      await _api.deleteVentaProducto(id);
+    } catch (_) {}
+    final idx = _ventas.indexWhere((v) => v.id == id);
+    if (idx != -1) {
+      final old = _ventas[idx];
+      _totalVentas -= (old.precioVenta * old.cantidad);
+      _gananciaVentas -= ((old.precioVenta - old.precioCosto) * old.cantidad);
+      _ventas.removeAt(idx);
+    }
+    refreshReporte();
+    notifyListeners();
+  }
+
+  // Galeria Actions
+  Future<GaleriaItem> createFotoGaleria({
+    required String titulo,
+    required String categoria,
+    required String imagenUrl,
+    String? descripcion,
+    bool destacado = false,
+  }) async {
+    final item = await _api.createFotoGaleria(
+      titulo: titulo,
+      categoria: categoria,
+      imagenUrl: imagenUrl,
+      descripcion: descripcion,
+      destacado: destacado,
+    );
+    _galeria.insert(0, item);
+    notifyListeners();
+    return item;
+  }
+
+  Future<void> deleteFotoGaleria(String id) async {
+    try {
+      await _api.deleteFotoGaleria(id);
+    } catch (_) {}
+    _galeria.removeWhere((g) => g.id == id);
+    notifyListeners();
   }
 }

@@ -138,12 +138,19 @@ class ApiService {
     String id, {
     String? estado,
     String? estadoPago,
+    double? precioFinal,
   }) async {
     final payload = <String, dynamic>{};
     if (estado != null) payload['estado'] = estado;
     if (estadoPago != null) payload['estado_pago'] = estadoPago;
+    if (precioFinal != null) payload['precio_final'] = precioFinal;
 
     final res = await _request('/citas/$id/estado', method: 'PATCH', body: payload);
+    return Cita.fromJson(res['cita'] as Map<String, dynamic>);
+  }
+
+  Future<Cita> updateCita(String id, Map<String, dynamic> data) async {
+    final res = await _request('/citas/$id', method: 'PUT', body: data);
     return Cita.fromJson(res['cita'] as Map<String, dynamic>);
   }
 
@@ -332,6 +339,26 @@ class ApiService {
     return Gasto.fromJson(data as Map<String, dynamic>);
   }
 
+  Future<Gasto> updateGasto(
+    String id, {
+    required double monto,
+    required String categoria,
+    String? concepto,
+  }) async {
+    final payload = {
+      'monto': monto,
+      'categoria': categoria,
+      'concepto': concepto,
+    };
+    final res = await _request('/gastos/$id', method: 'PUT', body: payload);
+    final data = res['data'] ?? res['gasto'] ?? res;
+    return Gasto.fromJson(data as Map<String, dynamic>);
+  }
+
+  Future<void> deleteGasto(String id) async {
+    await _request('/gastos/$id', method: 'DELETE');
+  }
+
   // --- VENTAS DE PRODUCTOS ---
   Future<Map<String, dynamic>> getVentasProductos({int? mes, int? anio}) async {
     final params = <String>[];
@@ -371,6 +398,30 @@ class ApiService {
     return VentaProducto.fromJson(data as Map<String, dynamic>);
   }
 
+  Future<VentaProducto> updateVentaProducto(
+    String id, {
+    required String nombre,
+    required double costo,
+    required double precio,
+    int cantidad = 1,
+    String? nombreCliente,
+  }) async {
+    final payload = {
+      'nombre': nombre,
+      'costo': costo,
+      'precio': precio,
+      'cantidad': cantidad,
+      'nombre_cliente': nombreCliente,
+    };
+    final res = await _request('/productos/ventas/$id', method: 'PUT', body: payload);
+    final data = res['data'] ?? res['venta'] ?? res;
+    return VentaProducto.fromJson(data as Map<String, dynamic>);
+  }
+
+  Future<void> deleteVentaProducto(String id) async {
+    await _request('/productos/ventas/$id', method: 'DELETE');
+  }
+
   // --- REPORTE FINANCIERO SIMPLE ---
   Future<ReporteFinanciero> getReporteSimple({int? mes, int? anio}) async {
     final params = <String>[];
@@ -388,6 +439,29 @@ class ApiService {
     final res = await _request('/galeria$query');
     final raw = res['trabajos'] as List? ?? [];
     return raw.map((item) => GaleriaItem.fromJson(item as Map<String, dynamic>)).toList();
+  }
+
+  Future<GaleriaItem> createFotoGaleria({
+    required String titulo,
+    required String categoria,
+    required String imagenUrl,
+    String? descripcion,
+    bool destacado = false,
+  }) async {
+    final payload = {
+      'titulo': titulo,
+      'categoria': categoria,
+      'imagen_url': imagenUrl,
+      'descripcion': descripcion,
+      'destacado': destacado,
+    };
+    final res = await _request('/galeria', method: 'POST', body: payload);
+    final data = res['trabajo'] ?? res['data'] ?? res;
+    return GaleriaItem.fromJson(data as Map<String, dynamic>);
+  }
+
+  Future<void> deleteFotoGaleria(String id) async {
+    await _request('/galeria/$id', method: 'DELETE');
   }
 
   Future<List<CursoItem>> getCursos() async {

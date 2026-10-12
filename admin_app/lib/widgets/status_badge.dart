@@ -39,6 +39,11 @@ class StatusBadge extends StatelessWidget {
           fg = const Color(0xFF047857);
           label = 'REALIZADA';
           break;
+        case 'calcular':
+          bg = const Color(0xFFFFEDD5);
+          fg = const Color(0xFFEA580C);
+          label = '🧮 CALCULAR';
+          break;
         case 'cancelada':
           bg = const Color(0xFFFFE4E6);
           fg = const Color(0xFFBE123C);

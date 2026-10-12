@@ -38,7 +38,7 @@ class _PromocionesTabState extends State<PromocionesTab> {
     }
 
     bool esPublica = promoToEdit?.esPublica ?? true;
-    bool activa = promoToEdit?.activa ?? true;
+    bool activa = promoToEdit?.activa ?? false;
     final qrCtrl = TextEditingController(text: promoToEdit?.codigoQr ?? '');
 
     showDialog(
@@ -198,7 +198,7 @@ class _PromocionesTabState extends State<PromocionesTab> {
                           contentPadding: EdgeInsets.zero,
                           title: const Text('Estado de la Promoción', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                           subtitle: Text(
-                            activa ? '🟢 Activa y aplicable' : '🔴 Desactivada (Pausada)',
+                            activa ? '🟢 Activa y visible en la web pública' : '🔴 Desactivada (Oculta en la web hasta activarla)',
                             style: TextStyle(
                               fontSize: 11,
                               color: activa ? const Color(0xFF047857) : AppTheme.danger,

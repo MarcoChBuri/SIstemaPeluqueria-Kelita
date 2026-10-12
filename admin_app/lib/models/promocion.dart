@@ -42,8 +42,12 @@ class Promocion {
       fechaInicio: json['fecha_inicio']?.toString() ?? '',
       fechaFin: json['fecha_fin']?.toString() ?? '',
       imagenUrl: json['imagen_url']?.toString(),
-      activa: json['activa'] ?? true,
-      esPublica: json['es_publica'] ?? true,
+      activa: json['activa'] == null
+          ? true
+          : (json['activa'] == true || json['activa'] == 1 || json['activa']?.toString().toLowerCase() == 'true'),
+      esPublica: json['es_publica'] == null
+          ? true
+          : (json['es_publica'] == true || json['es_publica'] == 1 || json['es_publica']?.toString().toLowerCase() == 'true'),
       codigoQr: json['codigo_qr']?.toString() ?? json['id']?.toString() ?? '',
     );
   }

@@ -59,6 +59,8 @@ class Cita {
   final CitaServicioInfo? servicios;
   final CitaPromocionInfo? promociones;
 
+  bool get isPagada => estadoPago == 'pagado' || estado == 'realizada' || estado == 'completada';
+
   Cita({
     required this.id,
     this.createdAt,
@@ -89,7 +91,7 @@ class Cita {
       clienteEmail: json['cliente_email']?.toString(),
       servicioId: json['servicio_id']?.toString() ?? '',
       promocionId: json['promocion_id']?.toString(),
-      fechaCita: json['fecha_cita']?.toString() ?? '',
+      fechaCita: json['fecha_cita']?.toString().split('T')[0].split(' ')[0] ?? '',
       horaInicio: json['hora_inicio']?.toString() ?? '',
       horaFin: json['hora_fin']?.toString() ?? '',
       estado: json['estado']?.toString() ?? 'pendiente',
@@ -114,28 +116,74 @@ class Cita {
   }
 
   Cita copyWith({
+    String? clienteNombre,
+    String? clienteTelefono,
+    String? clienteEmail,
+    String? servicioId,
+    String? promocionId,
+    String? fechaCita,
+    String? horaInicio,
+    String? horaFin,
     String? estado,
     String? estadoPago,
+    double? precioOriginal,
+    double? descuentoAplicado,
+    double? precioFinal,
+    String? notas,
+    CitaServicioInfo? servicios,
+    CitaPromocionInfo? promociones,
   }) {
     return Cita(
       id: id,
       createdAt: createdAt,
-      clienteNombre: clienteNombre,
-      clienteTelefono: clienteTelefono,
-      clienteEmail: clienteEmail,
-      servicioId: servicioId,
-      promocionId: promocionId,
-      fechaCita: fechaCita,
-      horaInicio: horaInicio,
-      horaFin: horaFin,
+      clienteNombre: clienteNombre ?? this.clienteNombre,
+      clienteTelefono: clienteTelefono ?? this.clienteTelefono,
+      clienteEmail: clienteEmail ?? this.clienteEmail,
+      servicioId: servicioId ?? this.servicioId,
+      promocionId: promocionId ?? this.promocionId,
+      fechaCita: fechaCita ?? this.fechaCita,
+      horaInicio: horaInicio ?? this.horaInicio,
+      horaFin: horaFin ?? this.horaFin,
       estado: estado ?? this.estado,
       estadoPago: estadoPago ?? this.estadoPago,
-      precioOriginal: precioOriginal,
-      descuentoAplicado: descuentoAplicado,
-      precioFinal: precioFinal,
-      notas: notas,
-      servicios: servicios,
-      promociones: promociones,
+      precioOriginal: precioOriginal ?? this.precioOriginal,
+      descuentoAplicado: descuentoAplicado ?? this.descuentoAplicado,
+      precioFinal: precioFinal ?? this.precioFinal,
+      notas: notas ?? this.notas,
+      servicios: servicios ?? this.servicios,
+      promociones: promociones ?? this.promociones,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'created_at': createdAt,
+      'cliente_nombre': clienteNombre,
+      'cliente_telefono': clienteTelefono,
+      'cliente_email': clienteEmail,
+      'servicio_id': servicioId,
+      'promocion_id': promocionId,
+      'fecha_cita': fechaCita,
+      'hora_inicio': horaInicio,
+      'hora_fin': horaFin,
+      'estado': estado,
+      'estado_pago': estadoPago,
+      'precio_original': precioOriginal,
+      'descuento_aplicado': descuentoAplicado,
+      'precio_final': precioFinal,
+      'notas': notas,
+      if (servicios != null)
+        'servicios': {
+          'nombre': servicios!.nombre,
+          'duracion_minutos': servicios!.duracionMinutos,
+          'categoria': servicios!.categoria,
+        },
+      if (promociones != null)
+        'promociones': {
+          'titulo': promociones!.titulo,
+          'porcentaje_descuento': promociones!.porcentajeDescuento,
+        },
+    };
   }
 }
