@@ -485,6 +485,15 @@ class AppStateProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> updateCitaEstado(String id, {String? estado, String? estadoPago, double? precioFinal}) async {
+    if (precioFinal != null) {
+      await updateCitaPrecio(id, precioFinal);
+    }
+    if (estado != null || estadoPago != null) {
+      await updateCitaStatus(id, estado: estado, estadoPago: estadoPago);
+    }
+  }
+
   Future<void> updateCitaPrecio(String id, double precio) async {
     try {
       final updated = await _api.updateCitaEstado(id, precioFinal: precio);
@@ -550,6 +559,16 @@ class AppStateProvider extends ChangeNotifier {
         _citas[index] = cita;
       }
     }
+    await _saveCitasCache();
+    refreshReporte();
+    notifyListeners();
+  }
+
+  Future<void> deleteCita(String id) async {
+    try {
+      await _api.deleteCita(id);
+    } catch (_) {}
+    _citas.removeWhere((c) => c.id == id);
     await _saveCitasCache();
     refreshReporte();
     notifyListeners();

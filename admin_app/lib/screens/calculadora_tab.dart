@@ -32,7 +32,7 @@ class _CalculadoraTabState extends State<CalculadoraTab> {
   double _precioTinte = 6.00;
   double _precioPeroxido = 1.50;
   double _precioHoraManoObra = 10.00;
-  double _multiplicador = 2.5;
+  double _multiplicador = 1.5;
 
   CalculoPrecioResult? _resultado;
 
@@ -50,7 +50,8 @@ class _CalculadoraTabState extends State<CalculadoraTab> {
         _precioTinte = prefs.getDouble('prec_tinte') ?? 6.00;
         _precioPeroxido = prefs.getDouble('prec_perox') ?? 1.50;
         _precioHoraManoObra = prefs.getDouble('prec_hora') ?? 10.00;
-        _multiplicador = prefs.getDouble('prec_mult') ?? 2.5;
+        final savedMult = prefs.getDouble('prec_mult');
+        _multiplicador = (savedMult == null || savedMult == 2.5) ? 1.5 : savedMult;
       });
     } catch (_) {}
     _calcular();

@@ -113,17 +113,22 @@ class _GaleriaCursosTabState extends State<GaleriaCursosTab> with SingleTickerPr
                   ],
                   const SizedBox(height: 14),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      TextButton.icon(
-                        onPressed: () {
-                          Navigator.pop(ctx);
-                          _confirmDeleteFoto(context, item);
-                        },
-                        icon: const Icon(Icons.delete_outline_rounded, color: AppTheme.danger),
-                        label: const Text('Eliminar Foto', style: TextStyle(color: AppTheme.danger)),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFE4E6),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: IconButton(
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            _confirmDeleteFoto(context, item);
+                          },
+                          icon: const Icon(Icons.delete_outline_rounded, color: AppTheme.danger),
+                          tooltip: 'Eliminar Foto',
+                        ),
                       ),
-                      const SizedBox(width: 8),
                       ElevatedButton(
                         onPressed: () => Navigator.pop(ctx),
                         child: const Text('Cerrar'),

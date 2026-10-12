@@ -242,18 +242,18 @@ class _ServiciosTabState extends State<ServiciosTab> {
                 // Botones de Acción (Editar / Eliminar)
                 Row(
                   children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
+                    Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFE4E6),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: IconButton(
                         onPressed: () {
                           Navigator.of(ctx).pop();
                           _confirmarEliminarServicio(context, s);
                         },
-                        icon: const Icon(Icons.delete_outline_rounded, size: 18, color: AppTheme.danger),
-                        label: const Text('Eliminar', style: TextStyle(color: AppTheme.danger, fontWeight: FontWeight.bold)),
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: AppTheme.danger),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
+                        icon: const Icon(Icons.delete_outline_rounded, color: AppTheme.danger),
+                        tooltip: 'Eliminar Servicio',
                       ),
                     ),
                     const SizedBox(width: 12),

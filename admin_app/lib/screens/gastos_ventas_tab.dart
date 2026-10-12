@@ -433,22 +433,22 @@ class _GastosVentasTabState extends State<GastosVentasTab> with SingleTickerProv
                       const SizedBox(height: 20),
                       Row(
                         children: [
-                          Expanded(
-                            child: OutlinedButton.icon(
+                          Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFE4E6),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: IconButton(
                               onPressed: () {
                                 Navigator.pop(ctx);
                                 _confirmDeleteGasto(context, gasto);
                               },
-                              icon: const Icon(Icons.delete_outline_rounded, color: AppTheme.danger, size: 18),
-                              label: const Text('Eliminar', style: TextStyle(color: AppTheme.danger)),
-                              style: OutlinedButton.styleFrom(
-                                side: const BorderSide(color: AppTheme.danger),
-                              ),
+                              icon: const Icon(Icons.delete_outline_rounded, color: AppTheme.danger),
+                              tooltip: 'Eliminar Gasto',
                             ),
                           ),
-                          const SizedBox(width: 10),
+                          const SizedBox(width: 12),
                           Expanded(
-                            flex: 2,
                             child: ElevatedButton(
                               onPressed: () async {
                                 if (!formKey.currentState!.validate()) return;
@@ -615,22 +615,22 @@ class _GastosVentasTabState extends State<GastosVentasTab> with SingleTickerProv
                     const SizedBox(height: 20),
                     Row(
                       children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
+                        Container(
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFE4E6),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: IconButton(
                             onPressed: () {
                               Navigator.pop(ctx);
                               _confirmDeleteVenta(context, venta);
                             },
-                            icon: const Icon(Icons.delete_outline_rounded, color: AppTheme.danger, size: 18),
-                            label: const Text('Eliminar', style: TextStyle(color: AppTheme.danger)),
-                            style: OutlinedButton.styleFrom(
-                              side: const BorderSide(color: AppTheme.danger),
-                            ),
+                            icon: const Icon(Icons.delete_outline_rounded, color: AppTheme.danger),
+                            tooltip: 'Eliminar Ingreso',
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 12),
                         Expanded(
-                          flex: 2,
                           child: ElevatedButton(
                             onPressed: () async {
                               if (!formKey.currentState!.validate()) return;
@@ -720,74 +720,171 @@ class _GastosVentasTabState extends State<GastosVentasTab> with SingleTickerProv
 
     showDialog(
       context: context,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: Padding(
+          padding: const EdgeInsets.all(22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Modificar Cobro', style: Theme.of(context).textTheme.headlineMedium),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFE4E6),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: IconButton(
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            _confirmDeleteCita(context, cita);
+                          },
+                          icon: const Icon(Icons.delete_outline_rounded, color: AppTheme.danger, size: 20),
+                          tooltip: 'Eliminar Cita',
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      IconButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        icon: const Icon(Icons.close_rounded),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAF9),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppTheme.border),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Clienta: ${cita.clienteNombre}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    const SizedBox(height: 2),
+                    Text('Servicio: ${cita.servicios?.nombre ?? "Atención en salón"} • ${cita.fechaCita}', style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+              TextFormField(
+                controller: precioCtrl,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                  labelText: 'Monto Cobrado Final (\$) *',
+                  prefixIcon: Icon(Icons.attach_money_rounded),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () async {
+                        Navigator.pop(ctx);
+                        final prov = Provider.of<AppStateProvider>(context, listen: false);
+                        try {
+                          await prov.updateCitaStatus(cita.id, estadoPago: 'pendiente');
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Cobro desmarcado (vuelve a pendiente).')),
+                            );
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.danger),
+                            );
+                          }
+                        }
+                      },
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFFF59E0B)),
+                        foregroundColor: const Color(0xFFD97706),
+                      ),
+                      child: const Text('Desmarcar Cobro'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        final nuevo = double.tryParse(precioCtrl.text);
+                        if (nuevo == null || nuevo <= 0) return;
+                        Navigator.pop(ctx);
+                        final prov = Provider.of<AppStateProvider>(context, listen: false);
+                        try {
+                          await prov.updateCitaPrecio(cita.id, nuevo);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Monto de cita actualizado.')),
+                            );
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.danger),
+                            );
+                          }
+                        }
+                      },
+                      child: const Text('Guardar'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeleteCita(BuildContext context, Cita cita) {
+    showDialog(
+      context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Modificar Cobro de Cita'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Clienta: ${cita.clienteNombre}', style: const TextStyle(fontWeight: FontWeight.bold)),
-            Text('Servicio: ${cita.servicios?.nombre ?? "Atención en salón"}', style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
-            const SizedBox(height: 14),
-            TextFormField(
-              controller: precioCtrl,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
-                labelText: 'Monto Cobrado Final (\$) *',
-                prefixIcon: Icon(Icons.attach_money_rounded),
-              ),
-            ),
-          ],
+        title: const Text('¿Eliminar esta cita?'),
+        content: Text(
+          'Se eliminará completamente la cita de "${cita.clienteNombre}" del ${cita.fechaCita}. '
+          'Se restará de las ganancias y se liberará el espacio de la agenda.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: const Text('Cancelar'),
           ),
-          OutlinedButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              final prov = Provider.of<AppStateProvider>(context, listen: false);
-              try {
-                await prov.updateCitaEstado(cita.id, estadoPago: 'pendiente');
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Cita marcada como pago pendiente (removida de ingresos).')),
-                  );
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.danger),
-                  );
-                }
-              }
-            },
-            child: const Text('Desmarcar Cobro', style: TextStyle(color: AppTheme.danger)),
-          ),
           ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.danger),
             onPressed: () async {
-              final nuevo = double.tryParse(precioCtrl.text);
-              if (nuevo == null || nuevo <= 0) return;
               Navigator.pop(ctx);
-              final prov = Provider.of<AppStateProvider>(context, listen: false);
               try {
-                await prov.updateCitaPrecio(cita.id, nuevo);
+                final prov = Provider.of<AppStateProvider>(context, listen: false);
+                await prov.deleteCita(cita.id);
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Monto de cita actualizado.')),
+                    const SnackBar(content: Text('Cita eliminada de la agenda y ganancias.')),
                   );
                 }
               } catch (e) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.danger),
+                    SnackBar(content: Text('Error al eliminar cita: $e'), backgroundColor: AppTheme.danger),
                   );
                 }
               }
             },
-            child: const Text('Actualizar'),
+            child: const Text('Eliminar'),
           ),
         ],
       ),
@@ -1648,7 +1745,7 @@ class _GastosVentasTabState extends State<GastosVentasTab> with SingleTickerProv
                           } else if (m['tipo'] == 'venta') {
                             _confirmDeleteVenta(context, m['objeto'] as VentaProducto);
                           } else if (m['tipo'] == 'cita') {
-                            _openEditCitaCobradaDialog(context, m['objeto'] as Cita);
+                            _confirmDeleteCita(context, m['objeto'] as Cita);
                           }
                         },
                       ),

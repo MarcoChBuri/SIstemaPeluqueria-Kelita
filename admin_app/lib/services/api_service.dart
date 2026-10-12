@@ -154,6 +154,10 @@ class ApiService {
     return Cita.fromJson(res['cita'] as Map<String, dynamic>);
   }
 
+  Future<void> deleteCita(String id) async {
+    await _request('/citas/$id', method: 'DELETE');
+  }
+
   Future<List<Map<String, String>>> getDisponibilidad(String fecha) async {
     final res = await _request('/citas/disponibilidad?fecha=$fecha');
     final raw = res['horas_ocupadas'] as List? ?? [];
