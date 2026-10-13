@@ -111,11 +111,11 @@ export const PromocionesView: React.FC<PromocionesViewProps> = ({
               className="bg-white rounded-2xl p-6 border border-[#eff4ff] shadow-xs flex flex-col justify-between hover:shadow-md transition-all"
             >
               <div>
-                <div className="flex items-center justify-between gap-2 mb-3">
+                <div className="flex flex-col xs:flex-row items-start xs:items-center justify-between gap-2 mb-3">
                   <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#ffd9e4] text-[#b10e6b]">
                     {p.porcentaje_descuento ? `${p.porcentaje_descuento}% OFF` : `$${p.monto_descuento} Descuento`}
                   </span>
-                  <span className="text-[10px] text-[#515f74] flex items-center gap-1">
+                  <span className="text-[10px] text-[#515f74] flex items-center gap-1 shrink-0">
                     <Calendar className="w-3 h-3" /> Hasta {p.fecha_fin}
                   </span>
                 </div>
@@ -129,7 +129,7 @@ export const PromocionesView: React.FC<PromocionesViewProps> = ({
                 </p>
               </div>
 
-              <div className="pt-4 border-t border-[#eff4ff] flex items-center justify-between">
+              <div className="pt-4 border-t border-[#eff4ff] flex flex-col xs:flex-row items-start xs:items-center justify-between gap-2">
                 <button
                   type="button"
                   onClick={() => handleToggleActiva(p)}

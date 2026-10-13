@@ -38,6 +38,8 @@ export interface Promocion {
   fecha_fin: string;
   imagen_url?: string | null;
   activa: boolean;
+  es_publica?: boolean | null;
+  codigo_qr?: string | null;
 }
 
 export interface Cita {

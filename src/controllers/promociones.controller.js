@@ -30,9 +30,10 @@ async function listarPromociones(req, res) {
       .order('created_at', { ascending: false });
 
     if (solo_publicas === 'true') {
+      // Filtrar: activa, pública (o sin definir), y dentro del rango de fechas
       query = query
         .eq('activa', true)
-        .or('es_publica.eq.true,es_publica.is.null')
+        .not('es_publica', 'eq', false)
         .lte('fecha_inicio', hoy)
         .gte('fecha_fin', hoy);
     } else if (incluir_inactivas !== 'true') {

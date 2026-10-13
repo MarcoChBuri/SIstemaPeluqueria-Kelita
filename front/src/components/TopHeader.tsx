@@ -20,8 +20,8 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
 }) => {
   const handleOpenAppointment = onOpenNewAppointment || onNewAppointmentClick;
   return (
-    <header className="fixed top-0 left-0 lg:left-72 right-0 h-20 bg-white/85 backdrop-blur-xl z-40 border-b border-[#eff4ff] shadow-[0_1px_8px_rgba(0,0,0,0.04)] transition-all">
-      <div className="h-20 w-full px-4 sm:px-8 flex items-center justify-between gap-4">
+    <header className="fixed top-0 left-0 lg:left-72 right-0 h-16 sm:h-20 bg-white/85 backdrop-blur-xl z-40 border-b border-[#eff4ff] shadow-[0_1px_8px_rgba(0,0,0,0.04)] transition-all">
+      <div className="h-full w-full px-3 sm:px-8 flex items-center justify-between gap-2 sm:gap-4">
         {/* Search Bar */}
         <div className="flex-1 max-w-md relative">
           <Search className="w-4 h-4 text-[#515f74] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />

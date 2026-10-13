@@ -92,7 +92,7 @@ export const AgendaCitasView: React.FC<AgendaCitasViewProps> = ({
       </div>
 
       {/* Filters Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-xl border border-[#eff4ff] shadow-xs text-xs">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-4 rounded-xl border border-[#eff4ff] shadow-xs text-xs">
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-semibold text-[#515f74] flex items-center gap-1">
             <Filter className="w-3.5 h-3.5" /> Estado:
@@ -118,12 +118,12 @@ export const AgendaCitasView: React.FC<AgendaCitasViewProps> = ({
             type="date"
             value={filterFecha}
             onChange={(e) => setFilterFecha(e.target.value)}
-            className="px-3 py-1.5 rounded-xl bg-[#eff4ff] text-xs text-[#0b1c30] outline-none"
+            className="px-3 py-1.5 rounded-xl bg-[#eff4ff] text-xs text-[#0b1c30] outline-none flex-1 min-w-0"
           />
           {filterFecha && (
             <button
               onClick={() => setFilterFecha('')}
-              className="text-[#b10e6b] font-semibold text-[11px] hover:underline cursor-pointer"
+              className="text-[#b10e6b] font-semibold text-[11px] hover:underline cursor-pointer shrink-0"
             >
               Limpiar
             </button>

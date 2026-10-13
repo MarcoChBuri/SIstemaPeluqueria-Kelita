@@ -61,10 +61,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
             <button
               onClick={() => onNavigateToTab('gastos')}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-[#eff4ff] hover:bg-[#d5e3fd] text-[#0b1c30] text-xs sm:text-sm font-semibold transition-all duration-200 active:scale-95 shadow-xs cursor-pointer"
+              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-full bg-[#eff4ff] hover:bg-[#d5e3fd] text-[#0b1c30] text-xs sm:text-sm font-semibold transition-all duration-200 active:scale-95 shadow-xs cursor-pointer"
             >
               <DollarSign className="w-4 h-4 text-[#515f74]" />
               <span>Registrar Gasto / Venta</span>
@@ -72,7 +72,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
             <button
               onClick={onOpenNewAppointment}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#b10e6b] hover:bg-[#930b58] text-white text-xs sm:text-sm font-bold shadow-md shadow-[#b10e6b]/20 transition-all duration-200 active:scale-95 cursor-pointer"
+              className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-[#b10e6b] hover:bg-[#930b58] text-white text-xs sm:text-sm font-bold shadow-md shadow-[#b10e6b]/20 transition-all duration-200 active:scale-95 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>Nueva Cita</span>
