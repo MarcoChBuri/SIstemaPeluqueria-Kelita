@@ -77,7 +77,28 @@ async function agregarFotoGaleria(req, res) {
   }
 }
 
+/**
+ * DELETE /api/galeria/:id
+ * Raquel elimina una foto de la galería.
+ */
+async function eliminarFotoGaleria(req, res) {
+  try {
+    const { id } = req.params;
+    const { error } = await supabase.from('galeria_trabajos').delete().eq('id', id);
+
+    if (error) {
+      console.error('[eliminarFotoGaleria] Error Supabase:', error);
+      return res.status(500).json({ ok: false, error: 'No se pudo eliminar la foto de la galería.' });
+    }
+
+    return res.status(200).json({ ok: true, mensaje: 'Foto eliminada correctamente.' });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: 'Error interno del servidor.' });
+  }
+}
+
 module.exports = {
   listarGaleria,
   agregarFotoGaleria,
+  eliminarFotoGaleria,
 };

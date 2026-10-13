@@ -58,6 +58,15 @@ async function crearCita(req, res) {
     const duracionFinal = req.body.duracion_minutos ? parseInt(req.body.duracion_minutos, 10) : (servicio.duracion_minutos || 60);
     const [horasStr, minutosStr] = hora_inicio.split(':');
     const inicioMinutos = parseInt(horasStr, 10) * 60 + parseInt(minutosStr, 10);
+
+    // Validar horario permitido (08:00 a 19:00 / 8 AM a 7 PM)
+    if (inicioMinutos < 8 * 60 || inicioMinutos > 19 * 60) {
+      return res.status(400).json({
+        ok: false,
+        error: 'El horario de atención es exclusivamente de 8:00 AM a 7:00 PM (08:00 a 19:00).',
+      });
+    }
+
     const finMinutos = inicioMinutos + duracionFinal;
 
     const finHora = String(Math.floor(finMinutos / 60)).padStart(2, '0');
@@ -213,11 +222,21 @@ async function listarCitas(req, res) {
 async function actualizarEstadoCita(req, res) {
   try {
     const { id } = req.params;
-    const { estado, estado_pago } = req.body;
+    const { estado, estado_pago, precio_final } = req.body;
 
     const actualizaciones = {};
-    if (estado) actualizaciones.estado = estado;
+    if (estado) {
+      if (estado === 'realizada' || estado === 'pagada') {
+        actualizaciones.estado = 'completada';
+      } else {
+        actualizaciones.estado = estado;
+      }
+    }
     if (estado_pago) actualizaciones.estado_pago = estado_pago;
+    if (precio_final !== undefined) {
+      actualizaciones.precio_final = Number(precio_final);
+      actualizaciones.precio_original = Number(precio_final);
+    }
 
     if (Object.keys(actualizaciones).length === 0) {
       return res.status(400).json({ ok: false, error: 'No se enviaron campos para actualizar.' });
@@ -242,6 +261,80 @@ async function actualizarEstadoCita(req, res) {
     });
   } catch (err) {
     console.error('[actualizarEstadoCita] Error inesperado:', err);
+    return res.status(500).json({ ok: false, error: 'Error interno del servidor.' });
+  }
+}
+
+/**
+ * PUT /api/citas/:id
+ * Edición completa de los datos de una cita.
+ */
+async function actualizarCita(req, res) {
+  try {
+    const { id } = req.params;
+    const {
+      cliente_nombre,
+      cliente_telefono,
+      cliente_email,
+      servicio_id,
+      promocion_id,
+      fecha_cita,
+      hora_inicio,
+      hora_fin,
+      estado,
+      estado_pago,
+      precio_final,
+      precio_original,
+      notas,
+    } = req.body;
+
+    const actualizaciones = {};
+    if (cliente_nombre) actualizaciones.cliente_nombre = cliente_nombre.trim();
+    if (cliente_telefono) actualizaciones.cliente_telefono = cliente_telefono.trim();
+    if (cliente_email !== undefined) actualizaciones.cliente_email = cliente_email ? cliente_email.trim() : null;
+    if (servicio_id) actualizaciones.servicio_id = servicio_id;
+    if (promocion_id !== undefined) actualizaciones.promocion_id = promocion_id;
+    if (fecha_cita) actualizaciones.fecha_cita = fecha_cita;
+    if (hora_inicio) actualizaciones.hora_inicio = hora_inicio;
+    if (hora_fin) actualizaciones.hora_fin = hora_fin;
+    if (notas !== undefined) actualizaciones.notas = notas ? notas.trim() : null;
+
+    if (estado) {
+      if (estado === 'realizada' || estado === 'pagada') {
+        actualizaciones.estado = 'completada';
+      } else {
+        actualizaciones.estado = estado;
+      }
+    }
+    if (estado_pago) actualizaciones.estado_pago = estado_pago;
+    if (precio_final !== undefined) {
+      actualizaciones.precio_final = Number(precio_final);
+      actualizaciones.precio_original = Number(precio_original || precio_final);
+    }
+
+    if (Object.keys(actualizaciones).length === 0) {
+      return res.status(400).json({ ok: false, error: 'No se enviaron campos para actualizar.' });
+    }
+
+    const { data, error } = await supabase
+      .from('citas')
+      .update(actualizaciones)
+      .eq('id', id)
+      .select('*, servicios(nombre)')
+      .single();
+
+    if (error) {
+      console.error('[actualizarCita] Error Supabase:', error);
+      return res.status(500).json({ ok: false, error: 'No se pudo actualizar la cita.' });
+    }
+
+    return res.status(200).json({
+      ok: true,
+      mensaje: 'Cita actualizada correctamente.',
+      cita: data,
+    });
+  } catch (err) {
+    console.error('[actualizarCita] Error inesperado:', err);
     return res.status(500).json({ ok: false, error: 'Error interno del servidor.' });
   }
 }
@@ -277,9 +370,31 @@ async function verificarDisponibilidad(req, res) {
   }
 }
 
+/**
+ * DELETE /api/citas/:id
+ * Raquel elimina una cita o reserva.
+ */
+async function eliminarCita(req, res) {
+  try {
+    const { id } = req.params;
+    const { error } = await supabase.from('citas').delete().eq('id', id);
+
+    if (error) {
+      console.error('[eliminarCita] Error Supabase:', error);
+      return res.status(500).json({ ok: false, error: 'No se pudo eliminar la cita.' });
+    }
+
+    return res.status(200).json({ ok: true, mensaje: 'Cita eliminada correctamente.' });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: 'Error interno del servidor.' });
+  }
+}
+
 module.exports = {
   crearCita,
   listarCitas,
   actualizarEstadoCita,
+  actualizarCita,
   verificarDisponibilidad,
+  eliminarCita,
 };

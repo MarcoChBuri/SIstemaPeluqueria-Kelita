@@ -89,7 +89,7 @@ export function App() {
       const [resCitas, resServicios, resPromos, resReporte] = await Promise.all([
         getCitas().catch(() => []),
         getServicios().catch(() => ({ servicios: [], paquetes_especiales: [], servicios_regulares: [] })),
-        getPromociones().catch(() => []),
+        getPromociones(false).catch(() => []),
         getReporteSimple().catch(() => null),
       ]);
 
@@ -128,6 +128,10 @@ export function App() {
   const handlePromocionCreated = (newPromo: Promocion) => {
     setPromociones((prev) => [...prev, newPromo]);
     showToast(`Promoción "${newPromo.titulo}" creada exitosamente.`);
+  };
+
+  const handlePromocionUpdated = (updatedPromo: Promocion) => {
+    setPromociones((prev) => prev.map((p) => (p.id === updatedPromo.id ? updatedPromo : p)));
   };
 
   // ═══════════════════════════════════════════════════════════════════
@@ -253,6 +257,7 @@ export function App() {
             <PromocionesView
               promociones={promociones}
               onPromocionCreated={handlePromocionCreated}
+              onPromocionUpdated={handlePromocionUpdated}
               onApplyPromoToCita={() => {
                 setIsNewAppointmentOpen(true);
               }}

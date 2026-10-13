@@ -117,7 +117,7 @@ export async function createServicio(payload: {
 // 3. PROMOCIONES
 // ==========================================
 export async function getPromociones(soloPublicas: boolean = true): Promise<Promocion[]> {
-  const query = soloPublicas ? '?solo_publicas=true' : '';
+  const query = soloPublicas ? '?solo_publicas=true' : '?incluir_inactivas=true';
   const res = await request<{ ok: boolean; promociones: Promocion[] }>(`/promociones${query}`);
   return res.promociones;
 }
@@ -130,9 +130,18 @@ export async function createPromocion(payload: {
   fecha_inicio?: string;
   fecha_fin: string;
   imagen_url?: string;
+  activa?: boolean;
 }): Promise<Promocion> {
   const res = await request<{ ok: boolean; mensaje: string; promocion: Promocion }>('/promociones', {
     method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  return res.promocion;
+}
+
+export async function updatePromocion(id: string, payload: Partial<Promocion>): Promise<Promocion> {
+  const res = await request<{ ok: boolean; mensaje: string; promocion: Promocion }>(`/promociones/${id}`, {
+    method: 'PUT',
     body: JSON.stringify(payload),
   });
   return res.promocion;

@@ -42,6 +42,10 @@ class ApiService {
         response = await http
             .post(uri, headers: headers, body: body != null ? jsonEncode(body) : null)
             .timeout(const Duration(seconds: 12));
+      } else if (method == 'PUT') {
+        response = await http
+            .put(uri, headers: headers, body: body != null ? jsonEncode(body) : null)
+            .timeout(const Duration(seconds: 12));
       } else if (method == 'PATCH') {
         response = await http
             .patch(uri, headers: headers, body: body != null ? jsonEncode(body) : null)

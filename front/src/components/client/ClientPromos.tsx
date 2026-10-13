@@ -13,8 +13,8 @@ export const ClientPromos: React.FC<ClientPromosProps> = ({ onReservar }) => {
 
   useEffect(() => {
     setLoading(true);
-    getPromociones()
-      .then((data) => setPromos(data))
+    getPromociones(true)
+      .then((data) => setPromos((data || []).filter((p) => p.activa === true)))
       .catch((err) => console.error('Error cargando promociones:', err))
       .finally(() => setLoading(false));
   }, []);

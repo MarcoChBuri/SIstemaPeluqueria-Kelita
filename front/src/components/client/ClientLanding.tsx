@@ -145,8 +145,8 @@ export const ClientLanding: React.FC<ClientLandingProps> = ({ onNavigate }) => {
     getGaleria()
       .then((items) => setGaleriaDestacada(items.filter((i) => i.destacado).slice(0, 6)))
       .catch(() => {});
-    getPromociones()
-      .then((p) => setPromos(p.slice(0, 2)))
+    getPromociones(true)
+      .then((p) => setPromos((p || []).filter((item) => item.activa === true).slice(0, 2)))
       .catch(() => {});
   }, []);
 

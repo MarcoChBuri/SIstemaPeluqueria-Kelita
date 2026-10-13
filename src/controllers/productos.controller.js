@@ -149,4 +149,81 @@ async function listarVentasProductos(req, res) {
   }
 }
 
-module.exports = { registrarVentaProducto, listarVentasProductos };
+/**
+ * PUT /api/productos/ventas/:id
+ * Editar una venta o ingreso de producto.
+ */
+async function actualizarVentaProducto(req, res) {
+  try {
+    const { id } = req.params;
+    const { nombre, costo, precio, nombre_producto, precio_costo, precio_venta } = req.body;
+
+    const updates = {};
+    const nombreFinal = (nombre || nombre_producto);
+    if (nombreFinal !== undefined) {
+      updates.nombre_producto = nombreFinal.trim();
+    }
+    const valorCosto = costo !== undefined ? costo : precio_costo;
+    if (valorCosto !== undefined) {
+      updates.precio_costo = +Number(valorCosto).toFixed(2);
+    }
+    const valorPrecio = precio !== undefined ? precio : precio_venta;
+    if (valorPrecio !== undefined) {
+      updates.precio_venta = +Number(valorPrecio).toFixed(2);
+    }
+
+    const { data, error } = await supabase
+      .from('ventas_productos')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[actualizarVentaProducto] Supabase error:', error);
+      return res.status(500).json({ ok: false, error: 'No se pudo actualizar el ingreso/venta.' });
+    }
+
+    return res.status(200).json({
+      ok: true,
+      mensaje: 'Ingreso actualizado correctamente.',
+      data: {
+        id: data.id,
+        nombre: data.nombre_producto,
+        costo: +Number(data.precio_costo).toFixed(2),
+        precio: +Number(data.precio_venta).toFixed(2),
+        ganancia: +(Number(data.precio_venta) - Number(data.precio_costo)).toFixed(2),
+        fecha: data.fecha,
+      },
+    });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: 'Error interno del servidor.' });
+  }
+}
+
+/**
+ * DELETE /api/productos/ventas/:id
+ * Eliminar una venta o ingreso registrado.
+ */
+async function eliminarVentaProducto(req, res) {
+  try {
+    const { id } = req.params;
+    const { error } = await supabase.from('ventas_productos').delete().eq('id', id);
+
+    if (error) {
+      console.error('[eliminarVentaProducto] Supabase error:', error);
+      return res.status(500).json({ ok: false, error: 'No se pudo eliminar el ingreso.' });
+    }
+
+    return res.status(200).json({ ok: true, mensaje: 'Ingreso eliminado correctamente.' });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: 'Error interno del servidor.' });
+  }
+}
+
+module.exports = {
+  registrarVentaProducto,
+  listarVentasProductos,
+  actualizarVentaProducto,
+  eliminarVentaProducto,
+};

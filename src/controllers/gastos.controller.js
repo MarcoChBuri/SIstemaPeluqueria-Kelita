@@ -93,4 +93,73 @@ async function listarGastos(req, res) {
   }
 }
 
-module.exports = { registrarGasto, listarGastos };
+/**
+ * PUT /api/gastos/:id
+ * Editar un gasto existente.
+ */
+async function actualizarGasto(req, res) {
+  try {
+    const { id } = req.params;
+    const { monto, categoria, concepto } = req.body;
+
+    const updates = {};
+    if (monto !== undefined) {
+      const montoNum = Number(monto);
+      if (isNaN(montoNum) || montoNum <= 0) {
+        return res.status(400).json({ ok: false, error: 'El monto debe ser mayor a 0.' });
+      }
+      updates.monto = +montoNum.toFixed(2);
+    }
+    if (categoria !== undefined) {
+      if (!CATEGORIAS_VALIDAS.includes(categoria)) {
+        return res.status(400).json({ ok: false, error: 'Categoría inválida.' });
+      }
+      updates.categoria = categoria;
+    }
+    if (concepto !== undefined) {
+      updates.concepto = concepto ? concepto.trim() : null;
+    }
+
+    const { data, error } = await supabase
+      .from('gastos')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[actualizarGasto] Supabase error:', error);
+      return res.status(500).json({ ok: false, error: 'No se pudo actualizar el gasto.' });
+    }
+
+    return res.status(200).json({
+      ok: true,
+      mensaje: 'Gasto actualizado correctamente.',
+      data,
+    });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: 'Error interno del servidor.' });
+  }
+}
+
+/**
+ * DELETE /api/gastos/:id
+ * Eliminar un gasto.
+ */
+async function eliminarGasto(req, res) {
+  try {
+    const { id } = req.params;
+    const { error } = await supabase.from('gastos').delete().eq('id', id);
+
+    if (error) {
+      console.error('[eliminarGasto] Supabase error:', error);
+      return res.status(500).json({ ok: false, error: 'No se pudo eliminar el gasto.' });
+    }
+
+    return res.status(200).json({ ok: true, mensaje: 'Gasto eliminado correctamente.' });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: 'Error interno del servidor.' });
+  }
+}
+
+module.exports = { registrarGasto, listarGastos, actualizarGasto, eliminarGasto };

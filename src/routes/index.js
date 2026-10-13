@@ -5,7 +5,9 @@ const {
   crearCita,
   listarCitas,
   actualizarEstadoCita,
+  actualizarCita,
   verificarDisponibilidad,
+  eliminarCita,
 } = require('../controllers/citas.controller');
 
 const { listarServicios, crearServicio, actualizarServicio, eliminarServicio } = require('../controllers/servicios.controller');
@@ -17,12 +19,17 @@ const {
   validarQrPromocion,
 } = require('../controllers/promociones.controller');
 
-const { listarGaleria, agregarFotoGaleria } = require('../controllers/galeria.controller');
+const { listarGaleria, agregarFotoGaleria, eliminarFotoGaleria } = require('../controllers/galeria.controller');
 const { listarCursosHotmart, crearCursoHotmart } = require('../controllers/cursos.controller');
-const { registrarGasto, listarGastos } = require('../controllers/gastos.controller');
+const { registrarGasto, listarGastos, actualizarGasto, eliminarGasto } = require('../controllers/gastos.controller');
 const { calcularPrecio } = require('../controllers/calculadora.controller');
 
-const { registrarVentaProducto, listarVentasProductos } = require('../controllers/productos.controller');
+const {
+  registrarVentaProducto,
+  listarVentasProductos,
+  actualizarVentaProducto,
+  eliminarVentaProducto,
+} = require('../controllers/productos.controller');
 const { reporteSimple } = require('../controllers/reportes.controller');
 
 const router = Router();
@@ -32,7 +39,9 @@ const router = Router();
 // ==========================================
 router.post('/citas',                   crearCita);                 // Cliente agenda cita
 router.get('/citas',                    listarCitas);               // Raquel revisa su agenda
+router.put('/citas/:id',                actualizarCita);            // Raquel edita cita completa
 router.patch('/citas/:id/estado',       actualizarEstadoCita);      // Raquel confirma/cancela cita
+router.delete('/citas/:id',              eliminarCita);              // Raquel elimina cita
 router.get('/citas/disponibilidad',     verificarDisponibilidad);   // Consultar horas libres de un día
 
 // ==========================================
@@ -57,6 +66,7 @@ router.post('/promociones/validar-qr',  validarQrPromocion);        // Validar Q
 // ==========================================
 router.get('/galeria',                  listarGaleria);             // Galería pública
 router.post('/galeria',                 agregarFotoGaleria);        // Raquel sube foto
+router.delete('/galeria/:id',           eliminarFotoGaleria);       // Raquel elimina foto
 
 // ==========================================
 // 5. CURSOS ONLINE (Hotmart)
@@ -69,6 +79,8 @@ router.post('/cursos',                  crearCursoHotmart);         // Raquel pu
 // ==========================================
 router.post('/gastos',                  registrarGasto);
 router.get('/gastos',                   listarGastos);
+router.put('/gastos/:id',               actualizarGasto);
+router.delete('/gastos/:id',            eliminarGasto);
 router.post('/calcular-precio',         calcularPrecio);
 
 // ==========================================
@@ -76,6 +88,8 @@ router.post('/calcular-precio',         calcularPrecio);
 // ==========================================
 router.post('/productos/venta',         registrarVentaProducto);
 router.get('/productos/ventas',         listarVentasProductos);
+router.put('/productos/ventas/:id',     actualizarVentaProducto);
+router.delete('/productos/ventas/:id',  eliminarVentaProducto);
 router.get('/reporte-simple',           reporteSimple);
 
 module.exports = router;

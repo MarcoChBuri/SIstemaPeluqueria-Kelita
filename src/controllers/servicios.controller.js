@@ -127,9 +127,20 @@ async function actualizarServicio(req, res) {
 
     const updates = {};
     if (nombre) updates.nombre = nombre.trim();
-    if (categoria && CATEGORIAS_VALIDAS.includes(categoria)) updates.categoria = categoria;
+    if (categoria) {
+      let catNorm = categoria.toLowerCase().trim();
+      if (catNorm === 'color') catNorm = 'colorimetria';
+      if (catNorm === 'peinado') catNorm = 'peinado_maquillaje';
+      if (catNorm === 'paquete') catNorm = 'paquete_bodas';
+      if (CATEGORIAS_VALIDAS.includes(catNorm)) {
+        updates.categoria = catNorm;
+      } else {
+        updates.categoria = 'otro';
+      }
+    }
     if (descripcion !== undefined) updates.descripcion = descripcion ? descripcion.trim() : null;
     if (precio_base !== undefined) updates.precio_base = +Number(precio_base).toFixed(2);
+    if (req.body.duracion_minutos !== undefined) updates.duracion_minutos = parseInt(req.body.duracion_minutos, 10);
 
     const { data, error } = await supabase
       .from('servicios')
