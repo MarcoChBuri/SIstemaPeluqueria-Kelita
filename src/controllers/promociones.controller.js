@@ -47,9 +47,16 @@ async function listarPromociones(req, res) {
       return res.status(500).json({ ok: false, error: 'Error al consultar promociones.' });
     }
 
+    // Normalizar para que frontend y apps tengan campos consistentes
+    const listaNormalizada = (data || []).map((p) => ({
+      ...p,
+      es_publica: p.activa,
+      codigo_qr: p.id,
+    }));
+
     return res.status(200).json({
       ok: true,
-      promociones: data || [],
+      promociones: listaNormalizada,
     });
   } catch (err) {
     console.error('[listarPromociones] Error inesperado:', err);
@@ -59,7 +66,7 @@ async function listarPromociones(req, res) {
 
 /**
  * POST /api/promociones
- * Raquel crea una nueva promoción (pública o exclusiva por QR).
+ * Raquel crea una nueva promoción.
  */
 async function crearPromocion(req, res) {
   try {
@@ -73,7 +80,6 @@ async function crearPromocion(req, res) {
       imagen_url,
       es_publica,
       activa,
-      codigo_qr,
     } = req.body;
 
     if (!titulo || titulo.trim() === '') {
@@ -83,9 +89,13 @@ async function crearPromocion(req, res) {
       return res.status(400).json({ ok: false, error: 'La fecha de finalización es obligatoria.' });
     }
 
-    const qrCodeFinal = (codigo_qr && codigo_qr.trim().length > 0)
-      ? codigo_qr.trim().toUpperCase()
-      : generarCodigoQR();
+    // Determinar estado activa: si es_publica es false o activa es false, queda desactivada
+    let estadoActiva = true;
+    if (activa !== undefined) {
+      estadoActiva = Boolean(activa);
+    } else if (es_publica !== undefined) {
+      estadoActiva = Boolean(es_publica);
+    }
 
     const nuevaPromo = {
       titulo: titulo.trim(),
@@ -95,9 +105,7 @@ async function crearPromocion(req, res) {
       fecha_inicio: fecha_inicio || new Date().toISOString().split('T')[0],
       fecha_fin,
       imagen_url: imagen_url ? imagen_url.trim() : null,
-      activa: activa !== undefined ? Boolean(activa) : true,
-      es_publica: es_publica !== undefined ? Boolean(es_publica) : true,
-      codigo_qr: qrCodeFinal,
+      activa: estadoActiva,
     };
 
     const { data, error } = await supabase
@@ -114,7 +122,11 @@ async function crearPromocion(req, res) {
     return res.status(201).json({
       ok: true,
       mensaje: 'Promoción creada exitosamente.',
-      promocion: data,
+      promocion: {
+        ...data,
+        es_publica: data.activa,
+        codigo_qr: data.id,
+      },
     });
   } catch (err) {
     console.error('[crearPromocion] Error inesperado:', err);
@@ -124,7 +136,7 @@ async function crearPromocion(req, res) {
 
 /**
  * PUT /api/promociones/:id
- * Editar una promoción existente (cambiar visibilidad web, activar/desactivar, fechas, etc.)
+ * Editar una promoción existente (activar/desactivar, fechas, descuentos, etc.)
  */
 async function actualizarPromocion(req, res) {
   try {
@@ -139,7 +151,6 @@ async function actualizarPromocion(req, res) {
       imagen_url,
       activa,
       es_publica,
-      codigo_qr,
     } = req.body;
 
     const updates = {};
@@ -150,9 +161,13 @@ async function actualizarPromocion(req, res) {
     if (fecha_inicio !== undefined) updates.fecha_inicio = fecha_inicio;
     if (fecha_fin !== undefined) updates.fecha_fin = fecha_fin;
     if (imagen_url !== undefined) updates.imagen_url = imagen_url ? imagen_url.trim() : null;
-    if (activa !== undefined) updates.activa = Boolean(activa);
-    if (es_publica !== undefined) updates.es_publica = Boolean(es_publica);
-    if (codigo_qr !== undefined) updates.codigo_qr = codigo_qr ? codigo_qr.trim().toUpperCase() : generarCodigoQR();
+
+    // Sincronizar activa / es_publica (para poner o quitar de la web)
+    if (activa !== undefined) {
+      updates.activa = Boolean(activa);
+    } else if (es_publica !== undefined) {
+      updates.activa = Boolean(es_publica);
+    }
 
     const { data, error } = await supabase
       .from('promociones')
@@ -169,7 +184,11 @@ async function actualizarPromocion(req, res) {
     return res.status(200).json({
       ok: true,
       mensaje: 'Promoción actualizada correctamente.',
-      promocion: data,
+      promocion: {
+        ...data,
+        es_publica: data.activa,
+        codigo_qr: data.id,
+      },
     });
   } catch (err) {
     console.error('[actualizarPromocion] Error inesperado:', err);
@@ -200,7 +219,7 @@ async function eliminarPromocion(req, res) {
 
 /**
  * POST /api/promociones/validar-qr
- * Validar o escanear el código QR de un cliente exclusivo.
+ * Validar o escanear el código QR de una promoción.
  */
 async function validarQrPromocion(req, res) {
   try {
@@ -215,7 +234,7 @@ async function validarQrPromocion(req, res) {
     const { data, error } = await supabase
       .from('promociones')
       .select('*')
-      .or(`codigo_qr.eq.${codeClean},id.eq.${codeClean}`)
+      .eq('id', codeClean)
       .single();
 
     if (error || !data) {
@@ -243,7 +262,11 @@ async function validarQrPromocion(req, res) {
       ok: true,
       valida: true,
       mensaje: `🎉 ¡Código QR Válido! Promoción: "${data.titulo}"`,
-      promocion: data,
+      promocion: {
+        ...data,
+        es_publica: data.activa,
+        codigo_qr: data.id,
+      },
     });
   } catch (err) {
     console.error('[validarQrPromocion] Error:', err);

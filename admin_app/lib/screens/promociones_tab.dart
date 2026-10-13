@@ -37,8 +37,7 @@ class _PromocionesTabState extends State<PromocionesTab> {
       } catch (_) {}
     }
 
-    bool esPublica = promoToEdit?.esPublica ?? true;
-    bool activa = promoToEdit?.activa ?? false;
+    bool activa = promoToEdit?.activa ?? true;
     final qrCtrl = TextEditingController(text: promoToEdit?.codigoQr ?? '');
 
     showDialog(
@@ -155,58 +154,45 @@ class _PromocionesTabState extends State<PromocionesTab> {
                         ),
                         const SizedBox(height: 14),
 
-                        // Switch: Publicar en la Web Pública vs Exclusiva/Privada QR
+                        // Switch Único: Publicar en la Web (Activa / Visible)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                           decoration: BoxDecoration(
-                            color: esPublica ? const Color(0xFFEFF6FF) : const Color(0xFFFFF7ED),
+                            color: activa ? const Color(0xFFF0FDF4) : const Color(0xFFFEF2F2),
                             borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: esPublica ? const Color(0xFFBFDBFE) : const Color(0xFFFED7AA)),
+                            border: Border.all(color: activa ? const Color(0xFFBBF7D0) : const Color(0xFFFECACA)),
                           ),
                           child: SwitchListTile(
                             contentPadding: EdgeInsets.zero,
                             title: Row(
                               children: [
                                 Icon(
-                                  esPublica ? Icons.public_rounded : Icons.qr_code_2_rounded,
-                                  size: 18,
-                                  color: esPublica ? const Color(0xFF2563EB) : const Color(0xFFEA580C),
+                                  activa ? Icons.public_rounded : Icons.public_off_rounded,
+                                  size: 20,
+                                  color: activa ? const Color(0xFF16A34A) : AppTheme.danger,
                                 ),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
-                                    esPublica ? 'Publicar en la Web Pública' : 'Exclusiva por Código QR (Privada)',
-                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                    activa ? 'Publicada en la Página Web' : 'Desactivada (Oculta de la Web)',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                      color: activa ? const Color(0xFF15803D) : AppTheme.danger,
+                                    ),
                                   ),
                                 ),
                               ],
                             ),
                             subtitle: Text(
-                              esPublica
-                                  ? 'Cualquier cliente podrá verla en la página web.'
-                                  : 'Oculta en la web. Solo clientes con el QR o código VIP podrán usarla.',
-                              style: const TextStyle(fontSize: 10, color: AppTheme.textMuted),
+                              activa
+                                  ? '🟢 Visible en la página web para todas las clientas que reserven.'
+                                  : '🔴 Oculta de la web. Ninguna clienta podrá verla en la página.',
+                              style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
                             ),
-                            value: esPublica,
-                            onChanged: (val) => setDialogState(() => esPublica = val),
+                            value: activa,
+                            onChanged: (val) => setDialogState(() => activa = val),
                           ),
-                        ),
-                        const SizedBox(height: 8),
-
-                        // Switch: Activa / Desactivada
-                        SwitchListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: const Text('Estado de la Promoción', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                          subtitle: Text(
-                            activa ? '🟢 Activa y visible en la web pública' : '🔴 Desactivada (Oculta en la web hasta activarla)',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: activa ? const Color(0xFF047857) : AppTheme.danger,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          value: activa,
-                          onChanged: (val) => setDialogState(() => activa = val),
                         ),
                         const SizedBox(height: 16),
 
@@ -228,7 +214,7 @@ class _PromocionesTabState extends State<PromocionesTab> {
                                     porcentajeDescuento: tipoDescuento == 'porcentaje' ? val : null,
                                     montoDescuento: tipoDescuento == 'monto' ? val : null,
                                     fechaFin: DateFormat('yyyy-MM-dd').format(fechaFin),
-                                    esPublica: esPublica,
+                                    esPublica: activa,
                                     activa: activa,
                                     codigoQr: qrCtrl.text.trim().isEmpty ? null : qrCtrl.text.trim(),
                                   );
@@ -239,7 +225,7 @@ class _PromocionesTabState extends State<PromocionesTab> {
                                     porcentajeDescuento: tipoDescuento == 'porcentaje' ? val : null,
                                     montoDescuento: tipoDescuento == 'monto' ? val : null,
                                     fechaFin: DateFormat('yyyy-MM-dd').format(fechaFin),
-                                    esPublica: esPublica,
+                                    esPublica: activa,
                                     activa: activa,
                                     codigoQr: qrCtrl.text.trim().isEmpty ? null : qrCtrl.text.trim(),
                                   );
@@ -739,68 +725,68 @@ class _PromocionesTabState extends State<PromocionesTab> {
                                       ),
                                     const SizedBox(height: 6),
 
-                                    // Badges de estado
+                                    // Estado en Web (Activa / Desactivada)
                                     Wrap(
-                                      spacing: 6,
+                                      spacing: 8,
                                       runSpacing: 4,
+                                      crossAxisAlignment: WrapCrossAlignment.center,
                                       children: [
-                                        // Web vs VIP
                                         InkWell(
-                                          onTap: () {
-                                            provider.updatePromocion(id: promo.id, esPublica: !promo.esPublica);
-                                          },
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                            decoration: BoxDecoration(
-                                              color: promo.esPublica ? const Color(0xFFDBEAFE) : const Color(0xFFFFEDD5),
-                                              borderRadius: BorderRadius.circular(10),
-                                            ),
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Icon(
-                                                  promo.esPublica ? Icons.public_rounded : Icons.lock_rounded,
-                                                  size: 11,
-                                                  color: promo.esPublica ? const Color(0xFF1E40AF) : const Color(0xFF9A3412),
-                                                ),
-                                                const SizedBox(width: 3),
-                                                Text(
-                                                  promo.esPublica ? 'Pública en Web' : 'Exclusiva por QR',
-                                                  style: TextStyle(
-                                                    fontSize: 10,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: promo.esPublica ? const Color(0xFF1E40AF) : const Color(0xFF9A3412),
+                                          borderRadius: BorderRadius.circular(20),
+                                          onTap: () async {
+                                            final nuevoEstado = !promo.activa;
+                                            try {
+                                              await provider.updatePromocion(
+                                                id: promo.id,
+                                                activa: nuevoEstado,
+                                                esPublica: nuevoEstado,
+                                              );
+                                              if (context.mounted) {
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  SnackBar(
+                                                    content: Text(
+                                                      nuevoEstado
+                                                          ? '🟢 Promoción "${promo.titulo}" activada y publicada en la web.'
+                                                          : '🔴 Promoción "${promo.titulo}" desactivada y retirada de la web.',
+                                                    ),
+                                                    backgroundColor: nuevoEstado ? const Color(0xFF15803D) : const Color(0xFF374151),
+                                                    duration: const Duration(seconds: 2),
                                                   ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-
-                                        // Activa / Inactiva
-                                        InkWell(
-                                          onTap: () {
-                                            provider.updatePromocion(id: promo.id, activa: !promo.activa);
+                                                );
+                                              }
+                                            } catch (e) {
+                                              if (context.mounted) {
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  SnackBar(
+                                                    content: Text('Error al cambiar estado: $e'),
+                                                    backgroundColor: AppTheme.danger,
+                                                  ),
+                                                );
+                                              }
+                                            }
                                           },
                                           child: Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                             decoration: BoxDecoration(
                                               color: promo.activa ? const Color(0xFFDCFCE7) : const Color(0xFFF3F4F6),
-                                              borderRadius: BorderRadius.circular(10),
+                                              borderRadius: BorderRadius.circular(20),
+                                              border: Border.all(
+                                                color: promo.activa ? const Color(0xFF86EFAC) : const Color(0xFFE5E7EB),
+                                              ),
                                             ),
                                             child: Row(
                                               mainAxisSize: MainAxisSize.min,
                                               children: [
                                                 Icon(
-                                                  promo.activa ? Icons.check_circle_outline_rounded : Icons.pause_circle_outline_rounded,
-                                                  size: 11,
-                                                  color: promo.activa ? const Color(0xFF166534) : const Color(0xFF4B5563),
+                                                  promo.activa ? Icons.check_circle_rounded : Icons.pause_circle_rounded,
+                                                  size: 13,
+                                                  color: promo.activa ? const Color(0xFF166534) : const Color(0xFF6B7280),
                                                 ),
-                                                const SizedBox(width: 3),
+                                                const SizedBox(width: 4),
                                                 Text(
-                                                  promo.activa ? 'Activa' : 'Pausada',
+                                                  promo.activa ? 'Publicada en Web' : 'Desactivada (Oculta)',
                                                   style: TextStyle(
-                                                    fontSize: 10,
+                                                    fontSize: 11,
                                                     fontWeight: FontWeight.bold,
                                                     color: promo.activa ? const Color(0xFF166534) : const Color(0xFF4B5563),
                                                   ),

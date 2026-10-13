@@ -703,26 +703,9 @@ class AppStateProvider extends ChangeNotifier {
         _promociones[idx] = updated;
         notifyListeners();
       }
-    } catch (_) {
-      final idx = _promociones.indexWhere((p) => p.id == id);
-      if (idx != -1) {
-        final ex = _promociones[idx];
-        _promociones[idx] = Promocion(
-          id: id,
-          createdAt: ex.createdAt,
-          titulo: titulo ?? ex.titulo,
-          descripcion: descripcion ?? ex.descripcion,
-          porcentajeDescuento: porcentajeDescuento ?? ex.porcentajeDescuento,
-          montoDescuento: montoDescuento ?? ex.montoDescuento,
-          fechaInicio: fechaInicio ?? ex.fechaInicio,
-          fechaFin: fechaFin ?? ex.fechaFin,
-          imagenUrl: imagenUrl ?? ex.imagenUrl,
-          activa: activa ?? ex.activa,
-          esPublica: esPublica ?? ex.esPublica,
-          codigoQr: codigoQr ?? ex.codigoQr,
-        );
-        notifyListeners();
-      }
+    } catch (e) {
+      debugPrint('[AppStateProvider] Error al actualizar promocion: $e');
+      rethrow;
     }
   }
 
