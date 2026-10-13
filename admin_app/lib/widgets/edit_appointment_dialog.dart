@@ -279,73 +279,140 @@ class _EditAppointmentDialogState extends State<EditAppointmentDialog> {
                   ),
                   const SizedBox(height: 20),
 
-                  // Botón Guardar
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : () async {
-                        if (!_formKey.currentState!.validate()) return;
-                        setState(() => _isLoading = true);
-
-                        final dateStr = '${_fecha.year}-${_fecha.month.toString().padLeft(2, '0')}-${_fecha.day.toString().padLeft(2, '0')}';
-                        final timeStr = _formatTimeOfDay(_horaInicio);
-
-                        // Buscar info del servicio
-                        final servObj = servicios.firstWhere(
-                          (s) => s.id == _servicioId,
-                          orElse: () => servicios.first,
-                        );
-
-                        final estadoNorm = _estado == 'pagada' ? 'completada' : _estado;
-                        final estadoPago = (_estado == 'pagada' || _estado == 'completada') ? 'pagado' : widget.cita.estadoPago;
-
-                        final citaEditada = widget.cita.copyWith(
-                          clienteNombre: _nombreCtrl.text.trim(),
-                          clienteTelefono: _telefonoCtrl.text.trim(),
-                          servicioId: _servicioId,
-                          fechaCita: dateStr,
-                          horaInicio: timeStr,
-                          precioFinal: double.tryParse(_precioCtrl.text) ?? widget.cita.precioFinal,
-                          estado: estadoNorm,
-                          estadoPago: estadoPago,
-                          notas: _notasCtrl.text.trim().isEmpty ? null : _notasCtrl.text.trim(),
-                          servicios: CitaServicioInfo(
-                            nombre: servObj.nombre,
-                            duracionMinutos: servObj.duracionMinutos,
-                            categoria: servObj.categoria,
-                          ),
-                        );
-
-                        try {
-                          await provider.updateCitaCompleta(citaEditada);
-                          if (context.mounted) {
-                            Navigator.of(context).pop();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('✅ Cita actualizada y guardada con éxito.'),
-                                backgroundColor: Color(0xFF047857),
-                              ),
-                            );
-                          }
-                        } catch (e) {
-                          if (context.mounted) {
-                            setState(() => _isLoading = false);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Error al guardar: $e'),
-                                backgroundColor: AppTheme.danger,
-                              ),
-                            );
-                          }
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                  // Botones de acción: Eliminar y Guardar
+                  Row(
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFE4E6),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: IconButton(
+                          onPressed: _isLoading
+                              ? null
+                              : () {
+                                  showDialog(
+                                    context: context,
+                                    builder: (dialogCtx) => AlertDialog(
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                      title: const Text('¿Eliminar Cita?'),
+                                      content: Text(
+                                        '¿Estás segura de eliminar permanentemente la cita de ${widget.cita.clienteNombre}? Esta acción no se puede deshacer.',
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () => Navigator.pop(dialogCtx),
+                                          child: const Text('Cancelar', style: TextStyle(color: AppTheme.textMuted)),
+                                        ),
+                                        ElevatedButton(
+                                          onPressed: () async {
+                                            Navigator.pop(dialogCtx);
+                                            setState(() => _isLoading = true);
+                                            try {
+                                              await provider.deleteCita(widget.cita.id);
+                                              if (context.mounted) {
+                                                Navigator.of(context).pop();
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  const SnackBar(
+                                                    content: Text('🗑️ Cita eliminada correctamente.'),
+                                                    backgroundColor: Color(0xFF047857),
+                                                  ),
+                                                );
+                                              }
+                                            } catch (e) {
+                                              if (context.mounted) {
+                                                setState(() => _isLoading = false);
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  SnackBar(
+                                                    content: Text('Error al eliminar: $e'),
+                                                    backgroundColor: AppTheme.danger,
+                                                  ),
+                                                );
+                                              }
+                                            }
+                                          },
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: AppTheme.danger,
+                                            foregroundColor: Colors.white,
+                                          ),
+                                          child: const Text('Sí, Eliminar'),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                          icon: const Icon(Icons.delete_outline_rounded, color: AppTheme.danger),
+                          tooltip: 'Eliminar Cita Definitivamente',
+                        ),
                       ),
-                      child: _isLoading
-                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                          : const Text('Guardar Cambios'),
-                    ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: _isLoading ? null : () async {
+                            if (!_formKey.currentState!.validate()) return;
+                            setState(() => _isLoading = true);
+
+                            final dateStr = '${_fecha.year}-${_fecha.month.toString().padLeft(2, '0')}-${_fecha.day.toString().padLeft(2, '0')}';
+                            final timeStr = _formatTimeOfDay(_horaInicio);
+
+                            // Buscar info del servicio
+                            final servObj = servicios.firstWhere(
+                              (s) => s.id == _servicioId,
+                              orElse: () => servicios.first,
+                            );
+
+                            final estadoNorm = _estado == 'pagada' ? 'completada' : _estado;
+                            final estadoPago = (_estado == 'pagada' || _estado == 'completada') ? 'pagado' : widget.cita.estadoPago;
+
+                            final citaEditada = widget.cita.copyWith(
+                              clienteNombre: _nombreCtrl.text.trim(),
+                              clienteTelefono: _telefonoCtrl.text.trim(),
+                              servicioId: _servicioId,
+                              fechaCita: dateStr,
+                              horaInicio: timeStr,
+                              precioFinal: double.tryParse(_precioCtrl.text) ?? widget.cita.precioFinal,
+                              estado: estadoNorm,
+                              estadoPago: estadoPago,
+                              notas: _notasCtrl.text.trim().isEmpty ? null : _notasCtrl.text.trim(),
+                              servicios: CitaServicioInfo(
+                                nombre: servObj.nombre,
+                                duracionMinutos: servObj.duracionMinutos,
+                                categoria: servObj.categoria,
+                              ),
+                            );
+
+                            try {
+                              await provider.updateCitaCompleta(citaEditada);
+                              if (context.mounted) {
+                                Navigator.of(context).pop();
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('✅ Cita actualizada y guardada con éxito.'),
+                                    backgroundColor: Color(0xFF047857),
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                setState(() => _isLoading = false);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Error al guardar: $e'),
+                                    backgroundColor: AppTheme.danger,
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
+                          child: _isLoading
+                              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                              : const Text('Guardar Cambios'),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

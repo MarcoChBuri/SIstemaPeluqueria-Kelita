@@ -673,7 +673,7 @@ class DashboardTab extends StatelessWidget {
           ],
         ],
 
-        // Botón cancelar (solo pendiente y confirmada)
+        // Botón cancelar / borrar
         if (cita.estado == 'pendiente' || cita.estado == 'confirmada') ...[
           const SizedBox(width: 8),
           InkWell(
@@ -681,23 +681,38 @@ class DashboardTab extends StatelessWidget {
               context: context,
               builder: (ctx) => AlertDialog(
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                title: const Text('¿Cancelar Cita?'),
-                content: Text('¿Estás segura de cancelar la cita de ${cita.clienteNombre}?'),
+                title: const Text('¿Gestionar Cita?'),
+                content: Text('¿Qué deseas hacer con la cita de ${cita.clienteNombre}?'),
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.pop(ctx),
-                    child: const Text('No', style: TextStyle(color: AppTheme.textMuted)),
+                    child: const Text('Volver', style: TextStyle(color: AppTheme.textMuted)),
                   ),
-                  ElevatedButton(
+                  OutlinedButton(
                     onPressed: () {
                       provider.updateCitaStatus(cita.id, estado: 'cancelada');
                       Navigator.pop(ctx);
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFFE11D48),
+                    ),
+                    child: const Text('Marcar Cancelada'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () async {
+                      Navigator.pop(ctx);
+                      await provider.deleteCita(cita.id);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('🗑️ Cita eliminada del sistema.')),
+                        );
+                      }
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.danger,
                       foregroundColor: Colors.white,
                     ),
-                    child: const Text('Sí, Cancelar'),
+                    child: const Text('Borrar Definitivamente'),
                   ),
                 ],
               ),

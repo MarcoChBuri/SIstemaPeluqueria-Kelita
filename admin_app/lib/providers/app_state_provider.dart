@@ -350,32 +350,15 @@ class AppStateProvider extends ChangeNotifier {
       ]);
 
       final apiCitas = results[0] as List<Cita>;
-      if (apiCitas.isNotEmpty) {
-        // Fusionar respetando modificaciones locales
-        final Map<String, Cita> merged = {};
-        for (var c in apiCitas) {
-          merged[c.id] = c;
-        }
-        for (var c in _citas) {
-          if (c.estadoPago == 'pagado' || c.estado == 'realizada' || c.estado == 'completada' || c.precioFinal > 0) {
-            merged[c.id] = c;
-          }
-        }
-        _citas = merged.values.toList();
+      if (apiCitas.isNotEmpty || _isBackendConnected) {
+        _citas = apiCitas;
         _citas.sort((a, b) => (b.fechaCita + b.horaInicio).compareTo(a.fechaCita + a.horaInicio));
         await _saveCitasCache();
       }
 
       final apiServicios = results[1] as List<Servicio>;
-      if (apiServicios.isNotEmpty) {
-        final Map<String, Servicio> mergedS = {};
-        for (var s in apiServicios) {
-          mergedS[s.id] = s;
-        }
-        for (var s in _servicios) {
-          mergedS[s.id] = s;
-        }
-        _servicios = mergedS.values.toList();
+      if (apiServicios.isNotEmpty || _isBackendConnected) {
+        _servicios = apiServicios;
         await _saveServiciosCache();
       }
 

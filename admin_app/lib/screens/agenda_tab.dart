@@ -128,30 +128,13 @@ class _AgendaTabState extends State<AgendaTab> {
 
     return Scaffold(
       backgroundColor: AppTheme.background,
-      floatingActionButton: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          FloatingActionButton.small(
-            heroTag: 'fab_evento',
-            onPressed: () => showDialog(
-              context: context,
-              builder: (_) => NewEventoDialog(initialFecha: selectedDateStr),
-            ),
-            backgroundColor: const Color(0xFF3B82F6),
-            foregroundColor: Colors.white,
-            tooltip: 'Anotar Evento / Bloqueo',
-            child: const Icon(Icons.event_note_rounded),
-          ),
-          const SizedBox(height: 10),
-          FloatingActionButton.extended(
-            heroTag: 'fab_cita',
-            onPressed: _openNewCitaDialog,
-            backgroundColor: AppTheme.primary,
-            foregroundColor: Colors.white,
-            icon: const Icon(Icons.add_rounded),
-            label: const Text('Nueva Cita', style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-        ],
+      floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'fab_cita',
+        onPressed: _openNewCitaDialog,
+        backgroundColor: AppTheme.primary,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('Nueva Cita', style: TextStyle(fontWeight: FontWeight.bold)),
       ),
       body: RefreshIndicator(
         onRefresh: () => provider.loadAllData(),
@@ -369,7 +352,7 @@ class _AgendaTabState extends State<AgendaTab> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      DateFormat('EEEE d de MMMM', 'es').format(_selectedDate),
+                      DateFormat("EEEE d 'de' MMMM", 'es').format(_selectedDate),
                       style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.textMain),
                     ),
                     Text(
@@ -521,7 +504,7 @@ class _AgendaTabState extends State<AgendaTab> {
                 },
               ),
 
-              const SizedBox(height: 80),
+              const SizedBox(height: 120),
             ],
           ),
         ),
@@ -858,7 +841,7 @@ class _AgendaTabState extends State<AgendaTab> {
             ),
           ),
 
-        // Botón cancelar (solo pendiente y confirmada)
+        // Botón cancelar / borrar
         if (cita.estado == 'pendiente' || cita.estado == 'confirmada') ...[
           const SizedBox(width: 8),
           InkWell(
@@ -866,23 +849,38 @@ class _AgendaTabState extends State<AgendaTab> {
               context: context,
               builder: (ctx) => AlertDialog(
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                title: const Text('¿Cancelar Cita?'),
-                content: Text('¿Estás segura de cancelar la cita de ${cita.clienteNombre}?'),
+                title: const Text('¿Gestionar Cita?'),
+                content: Text('¿Qué deseas hacer con la cita de ${cita.clienteNombre}?'),
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.pop(ctx),
-                    child: const Text('No', style: TextStyle(color: AppTheme.textMuted)),
+                    child: const Text('Volver', style: TextStyle(color: AppTheme.textMuted)),
                   ),
-                  ElevatedButton(
+                  OutlinedButton(
                     onPressed: () {
                       provider.updateCitaStatus(cita.id, estado: 'cancelada');
                       Navigator.pop(ctx);
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFFE11D48),
+                    ),
+                    child: const Text('Marcar Cancelada'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () async {
+                      Navigator.pop(ctx);
+                      await provider.deleteCita(cita.id);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('🗑️ Cita eliminada del sistema.')),
+                        );
+                      }
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.danger,
                       foregroundColor: Colors.white,
                     ),
-                    child: const Text('Sí, Cancelar'),
+                    child: const Text('Borrar Definitivamente'),
                   ),
                 ],
               ),

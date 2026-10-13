@@ -24,7 +24,7 @@ class StatusBadge extends StatelessWidget {
       } else {
         bg = const Color(0xFFFEF3C7);
         fg = const Color(0xFFB45309);
-        label = 'PENDIENTE';
+        label = 'POR COBRAR';
       }
     } else {
       switch (status) {

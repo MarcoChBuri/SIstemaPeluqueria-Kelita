@@ -30,6 +30,22 @@ class _GastosVentasTabState extends State<GastosVentasTab> with SingleTickerProv
     super.dispose();
   }
 
+  String _formatFecha(String? fechaRaw) {
+    if (fechaRaw == null || fechaRaw.trim().isEmpty) return '';
+    try {
+      final dt = DateTime.parse(fechaRaw.trim()).toLocal();
+      return DateFormat("d MMM yyyy, h:mm a", 'es').format(dt);
+    } catch (_) {
+      try {
+        final clean = fechaRaw.split('T')[0].split(' ')[0].trim();
+        final dt = DateTime.parse(clean);
+        return DateFormat("d MMM yyyy", 'es').format(dt);
+      } catch (_) {
+        return fechaRaw;
+      }
+    }
+  }
+
   // =========================================================
   // DIÁLOGOS DE REGISTRO
   // =========================================================
@@ -1186,16 +1202,16 @@ class _GastosVentasTabState extends State<GastosVentasTab> with SingleTickerProv
                         unselectedLabelColor: AppTheme.textMuted,
                         indicatorColor: AppTheme.primary,
                         indicatorWeight: 3,
-                        tabs: [
+                        tabs: const [
                           Tab(
-                            icon: const Icon(Icons.arrow_downward_rounded, size: 16),
-                            text: 'Gastos (-\$${provider.totalGastos.toStringAsFixed(0)})',
+                            icon: Icon(Icons.arrow_downward_rounded, size: 16),
+                            text: 'Gastos',
                           ),
                           Tab(
-                            icon: const Icon(Icons.trending_up_rounded, size: 16),
-                            text: 'Ingresos (+\$${provider.totalIngresos.toStringAsFixed(0)})',
+                            icon: Icon(Icons.trending_up_rounded, size: 16),
+                            text: 'Ingresos',
                           ),
-                          const Tab(
+                          Tab(
                             icon: Icon(Icons.history_rounded, size: 16),
                             text: 'Historial',
                           ),
@@ -1233,7 +1249,7 @@ class _GastosVentasTabState extends State<GastosVentasTab> with SingleTickerProv
     }
 
     return ListView.separated(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
       itemCount: gastos.length,
       separatorBuilder: (ctx, idx) => const SizedBox(height: 8),
       itemBuilder: (context, index) {
@@ -1267,8 +1283,9 @@ class _GastosVentasTabState extends State<GastosVentasTab> with SingleTickerProv
                         g.concepto ?? 'Gasto en ${g.categoria}',
                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                       ),
+                      const SizedBox(height: 2),
                       Text(
-                        '${g.categoria.toUpperCase()} • ${g.fecha}',
+                        '${g.categoria.toUpperCase()} • ${_formatFecha(g.fecha)}',
                         style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
                       ),
                     ],
@@ -1286,7 +1303,12 @@ class _GastosVentasTabState extends State<GastosVentasTab> with SingleTickerProv
                 IconButton(
                   icon: const Icon(Icons.edit_outlined, size: 18, color: AppTheme.textMuted),
                   onPressed: () => _openEditGastoDialog(context, g),
-                  tooltip: 'Editar o Borrar',
+                  tooltip: 'Editar',
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline_rounded, size: 18, color: AppTheme.danger),
+                  onPressed: () => _confirmDeleteGasto(context, g),
+                  tooltip: 'Eliminar',
                 ),
               ],
             ),
@@ -1457,7 +1479,7 @@ class _GastosVentasTabState extends State<GastosVentasTab> with SingleTickerProv
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'Clienta: ${c.clienteNombre} • ${c.fechaCita}',
+                          'Clienta: ${c.clienteNombre} • ${_formatFecha(c.fechaCita)}',
                           style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
                         ),
                       ],
@@ -1533,6 +1555,11 @@ class _GastosVentasTabState extends State<GastosVentasTab> with SingleTickerProv
                             'Cant: ${v.cantidad} ${v.nombreCliente != null ? "• ${v.nombreCliente}" : ""} | Ganancia: +\$${ganancia.toStringAsFixed(2)}',
                             style: const TextStyle(fontSize: 11, color: Color(0xFF047857), fontWeight: FontWeight.w600),
                           ),
+                          if (v.fecha.isNotEmpty)
+                            Text(
+                              _formatFecha(v.fecha),
+                              style: const TextStyle(fontSize: 10, color: AppTheme.textMuted),
+                            ),
                         ],
                       ),
                     ),
@@ -1547,7 +1574,12 @@ class _GastosVentasTabState extends State<GastosVentasTab> with SingleTickerProv
                     IconButton(
                       icon: const Icon(Icons.edit_outlined, size: 18, color: AppTheme.textMuted),
                       onPressed: () => _openEditVentaDialog(context, v),
-                      tooltip: 'Editar o Borrar',
+                      tooltip: 'Editar',
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline_rounded, size: 18, color: AppTheme.danger),
+                      onPressed: () => _confirmDeleteVenta(context, v),
+                      tooltip: 'Eliminar',
                     ),
                   ],
                 ),
@@ -1631,7 +1663,7 @@ class _GastosVentasTabState extends State<GastosVentasTab> with SingleTickerProv
     }
 
     return ListView.separated(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
       itemCount: movimientos.length,
       separatorBuilder: (ctx, idx) => const SizedBox(height: 8),
       itemBuilder: (context, index) {
@@ -1685,7 +1717,7 @@ class _GastosVentasTabState extends State<GastosVentasTab> with SingleTickerProv
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
-                            m['fecha']?.toString() ?? '',
+                            _formatFecha(m['fecha']?.toString()),
                             style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
                             overflow: TextOverflow.ellipsis,
                           ),
