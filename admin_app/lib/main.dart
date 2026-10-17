@@ -28,7 +28,7 @@ class RaquelAdminApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Peluquería Raquel Admin',
+      title: 'Kelita Buri',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       home: const HomeScreen(),

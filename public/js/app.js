@@ -1,5 +1,5 @@
 /**
- * PELUQUERÍA RAQUEL - Frontend Interactivo
+ * KELITA BURI - Frontend Interactivo (Sitio Web Público)
  */
 
 // Estado Global de la App
@@ -8,11 +8,8 @@ let state = {
   paquetes: [],
   promociones: [],
   galeria: [],
-  cursos: [],
-  citas: [],
-  gastos: [],
   vistaActual: 'cliente',
-  subtabAdmin: 'agenda',
+  isRegistroMode: false,
 };
 
 // ==========================================
@@ -21,80 +18,43 @@ let state = {
 document.addEventListener('DOMContentLoaded', () => {
   inicializarFechas();
   cargarDatosPublicos();
-  ejecutarCalculoTintes();
+  mostrarCookieBanner();
+  if (
+    window.location.hash === '#admin' ||
+    window.location.pathname.includes('admin') ||
+    window.location.pathname.includes('panel') ||
+    window.location.search.includes('admin')
+  ) {
+    cambiarVista('admin');
+  }
 });
 
 function inicializarFechas() {
   const hoy = new Date().toISOString().split('T')[0];
   const inputFechaCita = document.getElementById('reservaFecha');
-  const inputFiltroCitas = document.getElementById('filtroFechaCitas');
-  const inputPromoInicio = document.getElementById('promoInicio');
-  const inputPromoFin = document.getElementById('promoFin');
 
   if (inputFechaCita) inputFechaCita.min = hoy;
   if (inputFechaCita) inputFechaCita.value = hoy;
-  if (inputFiltroCitas) inputFiltroCitas.value = hoy;
-  if (inputPromoInicio) inputPromoInicio.value = hoy;
-  if (inputPromoFin) {
-    const finMes = new Date();
-    finMes.setDate(finMes.getDate() + 30);
-    inputPromoFin.value = finMes.toISOString().split('T')[0];
-  }
 }
 
 // ==========================================
-// NAVEGACIÓN Y VISTAS (Cliente vs Raquel Admin)
+// NAVEGACIÓN (Solo cliente - Admin bloqueado)
 // ==========================================
 function cambiarVista(vista) {
   state.vistaActual = vista;
   const vistaCliente = document.getElementById('vistaCliente');
   const vistaAdmin = document.getElementById('vistaAdmin');
-  const btnSwitch = document.getElementById('btnSwitchVista');
-  const clientNavs = document.querySelectorAll('.client-nav');
 
   if (vista === 'admin') {
+    // Admin está bloqueado desde la web, mostrar página de acceso denegado
     vistaCliente.classList.remove('active');
     vistaAdmin.classList.add('active');
-    btnSwitch.innerText = '🌐 Ver Web de Clientes';
-    btnSwitch.classList.remove('btn-outline');
-    btnSwitch.classList.add('btn-secondary');
-    clientNavs.forEach((el) => (el.style.display = 'none'));
-    cargarDatosAdmin();
   } else {
     vistaAdmin.classList.remove('active');
     vistaCliente.classList.add('active');
-    btnSwitch.innerText = '🔐 Panel de Raquel';
-    btnSwitch.classList.remove('btn-secondary');
-    btnSwitch.classList.add('btn-outline');
-    clientNavs.forEach((el) => (el.style.display = ''));
     cargarDatosPublicos();
   }
   window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-function toggleModoAdmin() {
-  if (state.vistaActual === 'cliente') {
-    cambiarVista('admin');
-  } else {
-    cambiarVista('cliente');
-  }
-}
-
-function cambiarSubtabAdmin(subtab) {
-  state.subtabAdmin = subtab;
-  document.querySelectorAll('.subtab-content').forEach((el) => el.classList.remove('active'));
-  document.querySelectorAll('.admin-nav-item').forEach((el) => el.classList.remove('active'));
-
-  const tabActiva = document.getElementById(`subtab-${subtab}`);
-  if (tabActiva) tabActiva.classList.add('active');
-
-  const btnActivo = Array.from(document.querySelectorAll('.admin-nav-item')).find((btn) =>
-    btn.getAttribute('onclick')?.includes(subtab)
-  );
-  if (btnActivo) btnActivo.classList.add('active');
-
-  if (subtab === 'agenda') cargarCitasAdmin();
-  if (subtab === 'gastos') cargarGastosAdmin();
 }
 
 // ==========================================
@@ -105,7 +65,6 @@ async function cargarDatosPublicos() {
     cargarServicios(),
     cargarPromociones(),
     cargarGaleria(),
-    cargarCursos(),
   ]);
 }
 
@@ -154,7 +113,7 @@ function renderizarServicios(categoria = 'todos') {
       <div class="servicio-info">
         <h4>${s.nombre}</h4>
         <p class="text-muted" style="font-size:0.86rem; margin-bottom:4px;">${s.descripcion || ''}</p>
-        <span class="servicio-meta">⏱️ ${s.duracion_minutos} min | 🏷️ ${s.categoria}</span>
+        <span class="servicio-meta">⏱️ ${s.duracion_minutos} min</span>
       </div>
       <div class="servicio-precio-box">
         <span class="servicio-precio">$${Number(s.precio_base).toFixed(2)}</span>
@@ -268,48 +227,15 @@ function renderizarGaleria() {
   `).join('');
 }
 
-async function cargarCursos() {
-  try {
-    const res = await fetch('/api/cursos');
-    const data = await res.json();
-    state.cursos = data.ok && data.cursos?.length ? data.cursos : [
-      { id: 'c1', titulo: 'Masterclass: Colorimetría desde Cero a Experta', descripcion: 'Aprende las fórmulas secretas de decoloración, fondos de aclaración y matices perfectos.', precio_referencia: 47.00, link_hotmart: 'https://hotmart.com' },
-      { id: 'c2', titulo: 'Técnicas de Peinados de Novia y Quinceañeras', descripcion: 'Domina las ondas glam, semirecogidos y técnicas de fijación profesional paso a paso.', precio_referencia: 35.00, link_hotmart: 'https://hotmart.com' },
-    ];
-  } catch {
-    state.cursos = [
-      { id: 'c1', titulo: 'Masterclass: Colorimetría desde Cero a Experta', descripcion: 'Aprende las fórmulas secretas de decoloración y matices.', precio_referencia: 47.00, link_hotmart: 'https://hotmart.com' },
-    ];
-  }
-  renderizarCursos();
-}
-
-function renderizarCursos() {
-  const contenedor = document.getElementById('gridCursos');
-  if (!contenedor) return;
-
-  contenedor.innerHTML = state.cursos.map(c => `
-    <div class="curso-card">
-      <div>
-        <span class="badge-tag">🎓 Hotmart Certified</span>
-        <h3 style="margin-top:10px; font-size:1.3rem;">${c.titulo}</h3>
-        <p class="text-muted" style="margin-top:8px; font-size:0.92rem;">${c.descripcion}</p>
-      </div>
-      <div>
-        <div class="curso-precio">$${Number(c.precio_referencia).toFixed(2)} USD</div>
-        <a href="${c.link_hotmart}" target="_blank" rel="noopener" class="btn btn-primary btn-block">
-          🛒 Comprar en Hotmart
-        </a>
-      </div>
-    </div>
-  `).join('');
-}
-
 // ==========================================
 // MODAL DE RESERVAS (CLIENTES)
 // ==========================================
 function abrirModalReserva() {
   document.getElementById('modalReserva').classList.add('active');
+  const catSel = document.getElementById('reservaCategoria');
+  if (catSel && !catSel.value) {
+    alCambiarCategoriaReserva();
+  }
   actualizarCalculoReserva();
 }
 
@@ -317,10 +243,86 @@ function cerrarModalReserva() {
   document.getElementById('modalReserva').classList.remove('active');
 }
 
+function servicioEnCategoriaWeb(s, catId) {
+  if (!catId) return false;
+  const svcCat = (s.categoria || '').toLowerCase().trim();
+  const svcNom = (s.nombre || '').toLowerCase().trim();
+  const combined = `${svcCat} ${svcNom}`;
+
+  if (catId === 'corte') {
+    return svcCat === 'corte' || combined.includes('corte') || combined.includes('cut');
+  }
+  if (catId === 'color') {
+    return svcCat.includes('color') || combined.includes('color') || combined.includes('tinte') || combined.includes('balayage') || combined.includes('decolor') || combined.includes('matiz');
+  }
+  if (catId === 'tratamiento') {
+    return svcCat.includes('tratam') || combined.includes('tratam') || combined.includes('alisad') || combined.includes('keratina') || combined.includes('botox');
+  }
+  if (catId === 'pestanas') {
+    return svcCat.includes('pesta') || svcCat.includes('ceja') || combined.includes('pesta') || combined.includes('ceja') || combined.includes('lash');
+  }
+  if (catId === 'paquete') {
+    return svcCat.includes('paquete') || combined.includes('paquete') || combined.includes('boda') || combined.includes('novia') || combined.includes('quince') || combined.includes('15');
+  }
+  if (catId === 'peinado') {
+    return svcCat.includes('peinado') || svcCat.includes('maquillaje') || combined.includes('peinado') || combined.includes('maquillaje') || combined.includes('makeup') || combined.includes('brushing');
+  }
+  return svcCat === catId;
+}
+
+function alCambiarCategoriaReserva(preselectedServicioId) {
+  const cat = document.getElementById('reservaCategoria')?.value;
+  const grupoServicio = document.getElementById('grupoServicioReserva');
+  const selectServicio = document.getElementById('reservaServicioId');
+  if (!selectServicio) return;
+
+  if (!cat) {
+    if (grupoServicio) grupoServicio.style.display = 'none';
+    selectServicio.innerHTML = '<option value="">-- Selecciona un servicio --</option>';
+    selectServicio.value = '';
+    actualizarCalculoReserva();
+    return;
+  }
+
+  const todos = [...state.paquetes, ...state.servicios];
+  const filtrados = todos.filter(s => servicioEnCategoriaWeb(s, cat));
+
+  if (grupoServicio) grupoServicio.style.display = 'block';
+
+  if (filtrados.length === 0) {
+    selectServicio.innerHTML = '<option value="">No hay servicios registrados en esta categoría</option>';
+  } else {
+    selectServicio.innerHTML = '<option value="">-- Selecciona un servicio --</option>' +
+      filtrados.map(s => `<option value="${s.id}">${s.nombre} ($${Number(s.precio_base).toFixed(2)})</option>`).join('');
+  }
+
+  if (preselectedServicioId) {
+    selectServicio.value = preselectedServicioId;
+  } else {
+    selectServicio.value = '';
+  }
+  actualizarCalculoReserva();
+}
+
 function abrirModalConServicio(servicioId) {
   abrirModalReserva();
-  document.getElementById('reservaServicioId').value = servicioId;
-  actualizarCalculoReserva();
+  const todos = [...state.paquetes, ...state.servicios];
+  const s = todos.find(item => item.id === servicioId);
+  if (s) {
+    let targetCat = 'corte';
+    const cats = ['corte', 'color', 'tratamiento', 'pestanas', 'peinado', 'paquete'];
+    for (const c of cats) {
+      if (servicioEnCategoriaWeb(s, c)) {
+        targetCat = c;
+        break;
+      }
+    }
+    const selCat = document.getElementById('reservaCategoria');
+    if (selCat) selCat.value = targetCat;
+    alCambiarCategoriaReserva(servicioId);
+  } else {
+    actualizarCalculoReserva();
+  }
 }
 
 function abrirModalConPromo(promoId) {
@@ -330,12 +332,7 @@ function abrirModalConPromo(promoId) {
 }
 
 function poblarSelectServicios() {
-  const select = document.getElementById('reservaServicioId');
-  if (!select) return;
-
-  const todos = [...state.paquetes, ...state.servicios];
-  select.innerHTML = `<option value="">-- Selecciona un servicio --</option>` +
-    todos.map(s => `<option value="${s.id}">${s.nombre} ($${Number(s.precio_base).toFixed(2)})</option>`).join('');
+  alCambiarCategoriaReserva();
 }
 
 function poblarSelectPromociones() {
@@ -425,13 +422,13 @@ async function procesarReservaCita(e) {
     const data = await res.json();
 
     if (data.ok) {
-      mostrarToast('🎉 ¡Cita agendada! Abriendo WhatsApp de Raquel...');
+      mostrarToast('🎉 ¡Cita agendada! Abriendo WhatsApp...');
       cerrarModalReserva();
       if (data.whatsapp_url) {
         window.open(data.whatsapp_url, '_blank');
       }
     } else {
-      mostrarToast(`⚠️ ${data.error || 'No se pudo agendar la cita.'}`);
+      mostrarToast('No se pudo agendar la cita. Por favor, revisa los datos e inténtalo de nuevo.');
     }
   } catch (err) {
     mostrarToast('✅ Cita simulada con éxito (Modo local).');
@@ -443,211 +440,132 @@ async function procesarReservaCita(e) {
 }
 
 // ==========================================
-// PANEL DE ADMINISTRACIÓN DE RAQUEL
+// LOGIN / REGISTRO DE USUARIOS
 // ==========================================
-async function cargarDatosAdmin() {
-  if (state.subtabAdmin === 'agenda') cargarCitasAdmin();
-  if (state.subtabAdmin === 'gastos') cargarGastosAdmin();
+function abrirModalLogin() {
+  state.isRegistroMode = false;
+  actualizarVistaLogin();
+  document.getElementById('modalLogin').classList.add('active');
 }
 
-async function cargarCitasAdmin() {
-  const contenedor = document.getElementById('listaCitasAdmin');
-  const fecha = document.getElementById('filtroFechaCitas')?.value;
+function cerrarModalLogin() {
+  document.getElementById('modalLogin').classList.remove('active');
+}
 
-  try {
-    const url = fecha ? `/api/citas?fecha=${fecha}` : '/api/citas';
-    const res = await fetch(url);
-    const data = await res.json();
+function toggleRegistro() {
+  state.isRegistroMode = !state.isRegistroMode;
+  actualizarVistaLogin();
+}
 
-    if (data.ok && data.citas?.length) {
-      state.citas = data.citas;
-      contenedor.innerHTML = state.citas.map(c => `
-        <div class="cita-card estado-${c.estado}">
-          <div>
-            <div style="font-weight:700; font-size:1.1rem;">${c.cliente_nombre} - 📞 ${c.cliente_telefono}</div>
-            <div class="text-muted" style="font-size:0.9rem;">
-              💇‍♀️ ${c.servicios?.nombre || 'Servicio'} | ⏰ ${c.hora_inicio} a ${c.hora_fin} | 📅 ${c.fecha_cita}
-            </div>
-            <div style="margin-top:6px;">
-              <span class="badge-tag">Total: $${Number(c.precio_final).toFixed(2)}</span>
-              <span class="badge-tag" style="margin-left:6px;">Estado: ${c.estado.toUpperCase()}</span>
-            </div>
-          </div>
-          <div class="cita-actions">
-            ${c.estado === 'pendiente' ? `
-              <button class="btn btn-primary btn-sm" onclick="cambiarEstadoCita('${c.id}', 'confirmada')">
-                Confirmar
-              </button>
-            ` : ''}
-            ${c.estado === 'confirmada' ? `
-              <button class="btn btn-whatsapp btn-sm" onclick="cambiarEstadoCita('${c.id}', 'completada')">
-                Completada
-              </button>
-            ` : ''}
-            <button class="btn btn-secondary btn-sm" onclick="cambiarEstadoCita('${c.id}', 'cancelada')">
-              Cancelar
-            </button>
-          </div>
-        </div>
-      `).join('');
-    } else {
-      contenedor.innerHTML = `<p class="text-muted">No hay citas registradas para este día. ¡Día despejado!</p>`;
-    }
-  } catch {
-    contenedor.innerHTML = `<p class="text-muted">Conecta Supabase en tu .env para ver las citas en tiempo real.</p>`;
+function actualizarVistaLogin() {
+  const titulo = document.getElementById('loginModalTitle');
+  const btnLogin = document.getElementById('btnLogin');
+  const grupoNombre = document.getElementById('grupoRegistroNombre');
+  const grupoTelefono = document.getElementById('grupoRegistroTelefono');
+  const switchText = document.getElementById('authSwitchText');
+  const inputNombre = document.getElementById('registroNombre');
+  const inputTelefono = document.getElementById('registroTelefono');
+
+  if (state.isRegistroMode) {
+    titulo.innerText = 'Crear Cuenta';
+    btnLogin.innerText = 'Registrarme';
+    grupoNombre.style.display = 'block';
+    grupoTelefono.style.display = 'block';
+    inputNombre.required = true;
+    inputTelefono.required = true;
+    switchText.innerHTML = '¿Ya tienes cuenta? <a href="#" onclick="toggleRegistro(); return false;">Iniciar sesión</a>';
+  } else {
+    titulo.innerText = 'Iniciar Sesión';
+    btnLogin.innerText = 'Iniciar Sesión';
+    grupoNombre.style.display = 'none';
+    grupoTelefono.style.display = 'none';
+    inputNombre.required = false;
+    inputTelefono.required = false;
+    switchText.innerHTML = '¿No tienes cuenta? <a href="#" onclick="toggleRegistro(); return false;">Crear una cuenta</a>';
   }
 }
 
-async function cambiarEstadoCita(id, nuevoEstado) {
-  try {
-    const res = await fetch(`/api/citas/${id}/estado`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ estado: nuevoEstado }),
-    });
-    const data = await res.json();
-    if (data.ok) {
-      mostrarToast(`Cita marcada como ${nuevoEstado}`);
-      cargarCitasAdmin();
-    }
-  } catch (err) {
-    mostrarToast('Error al actualizar estado.');
-  }
-}
-
-async function guardarPromocion(e) {
+async function procesarLogin(e) {
   e.preventDefault();
-  const payload = {
-    titulo: document.getElementById('promoTitulo').value,
-    porcentaje_descuento: document.getElementById('promoPorcentaje').value || null,
-    monto_descuento: document.getElementById('promoMonto').value || null,
-    fecha_inicio: document.getElementById('promoInicio').value,
-    fecha_fin: document.getElementById('promoFin').value,
-    descripcion: document.getElementById('promoDesc').value,
-  };
+  const email = document.getElementById('loginEmail').value;
+  const password = document.getElementById('loginPassword').value;
 
-  try {
-    const res = await fetch('/api/promociones', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    const data = await res.json();
-    if (data.ok) {
-      mostrarToast('🎁 ¡Promoción publicada exitosamente!');
-      document.getElementById('formNuevaPromo').reset();
-    } else {
-      mostrarToast(`⚠️ ${data.error}`);
+  if (state.isRegistroMode) {
+    const nombre = document.getElementById('registroNombre').value;
+    const telefono = document.getElementById('registroTelefono').value;
+
+    try {
+      const res = await fetch('/api/clientes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nombre, telefono, email }),
+      });
+      const data = await res.json();
+      if (data.ok || data.cliente) {
+        mostrarToast('🎉 ¡Cuenta creada! Ahora puedes acceder a promociones exclusivas.');
+        cerrarModalLogin();
+      } else {
+        mostrarToast('No se pudo crear la cuenta. Por favor, revisa los datos e inténtalo de nuevo.');
+      }
+    } catch {
+      mostrarToast('Cuenta registrada localmente. Conecta el servidor para sincronizar.');
+      cerrarModalLogin();
     }
-  } catch {
-    mostrarToast('Promoción simulada guardada.');
-  }
-}
-
-async function guardarFotoGaleria(e) {
-  e.preventDefault();
-  const payload = {
-    titulo: document.getElementById('fotoTitulo').value,
-    categoria: document.getElementById('fotoCategoria').value,
-    imagen_url: document.getElementById('fotoUrl').value,
-    descripcion: document.getElementById('fotoDesc').value,
-    destacado: true,
-  };
-
-  try {
-    const res = await fetch('/api/galeria', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    const data = await res.json();
-    if (data.ok) {
-      mostrarToast('📸 ¡Foto agregada al portafolio web!');
-      document.getElementById('formNuevaFoto').reset();
+  } else {
+    // Login simple - verificar si el cliente existe por email
+    try {
+      const res = await fetch(`/api/clientes?q=${encodeURIComponent(email)}`);
+      const data = await res.json();
+      if (data.ok && data.clientes?.length) {
+        mostrarToast(`¡Bienvenida de vuelta, ${data.clientes[0].nombre}! 💕`);
+        cerrarModalLogin();
+      } else {
+        mostrarToast('No encontramos una cuenta con ese correo. ¿Deseas registrarte?');
+      }
+    } catch {
+      mostrarToast('Sesión iniciada localmente.');
+      cerrarModalLogin();
     }
-  } catch {
-    mostrarToast('Foto simulada guardada.');
   }
 }
 
-// Calculadora de Tintes
-async function ejecutarCalculoTintes() {
-  const porciones = parseInt(document.getElementById('calcDecolorante')?.value || 0, 10);
-  const tubos = parseInt(document.getElementById('calcTinte')?.value || 0, 10);
-  const peroxido = parseInt(document.getElementById('calcPeroxido')?.value || 0, 10);
-  const horas = parseInt(document.getElementById('calcHoras')?.value || 0, 10);
-
-  // Precios de referencia
-  const costoDecolorante = porciones * 6.25;
-  const costoTinte = tubos * 6.00;
-  const costoPeroxido = peroxido * 1.50;
-  const costoMateriales = costoDecolorante + costoTinte + costoPeroxido;
-  const materialesConMargen = costoMateriales * 3;
-  const manoDeObra = horas * 5.00;
-  const precioFinal = materialesConMargen + manoDeObra;
-
-  const precioFinalEl = document.getElementById('calcPrecioFinal');
-  const desgloseEl = document.getElementById('calcDesglose');
-
-  if (precioFinalEl) precioFinalEl.innerText = `$${precioFinal.toFixed(2)}`;
-  if (desgloseEl) {
-    desgloseEl.innerHTML = `
-      <div><strong>Materiales de costo:</strong> $${costoMateriales.toFixed(2)}</div>
-      <div><strong>Margen aplicado:</strong> x3 ($${materialesConMargen.toFixed(2)})</div>
-      <div><strong>Mano de obra (${horas}h):</strong> $${manoDeObra.toFixed(2)}</div>
-    `;
-  }
+// ==========================================
+// MODALES LEGALES (Términos y Cookies)
+// ==========================================
+function abrirModalTerminos() {
+  document.getElementById('modalTerminos').classList.add('active');
 }
 
-// Gastos
-async function guardarGasto(e) {
-  e.preventDefault();
-  const payload = {
-    monto: document.getElementById('gastoMonto').value,
-    categoria: document.getElementById('gastoCategoria').value,
-    concepto: document.getElementById('gastoConcepto').value,
-  };
-
-  try {
-    const res = await fetch('/api/gastos', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    const data = await res.json();
-    if (data.ok) {
-      mostrarToast('💵 Gasto registrado en la base de datos.');
-      document.getElementById('formGasto').reset();
-      cargarGastosAdmin();
-    }
-  } catch {
-    mostrarToast('Gasto simulado.');
-  }
+function cerrarModalTerminos() {
+  document.getElementById('modalTerminos').classList.remove('active');
 }
 
-async function cargarGastosAdmin() {
-  const contenedor = document.getElementById('listaGastosAdmin');
-  if (!contenedor) return;
-
-  try {
-    const res = await fetch('/api/gastos');
-    const data = await res.json();
-    if (data.ok && data.gastos?.length) {
-      contenedor.innerHTML = data.gastos.map(g => `
-        <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.08);">
-          <span>${g.concepto || g.categoria} (${g.categoria})</span>
-          <strong style="color:var(--accent-gold);">$${Number(g.monto).toFixed(2)}</strong>
-        </div>
-      `).join('');
-    } else {
-      contenedor.innerHTML = `<p class="text-muted">No hay gastos registrados este mes.</p>`;
-    }
-  } catch {
-    contenedor.innerHTML = `<p class="text-muted">Conecta Supabase para ver el historial de gastos.</p>`;
-  }
+function abrirModalPoliticaCookies() {
+  document.getElementById('modalCookies').classList.add('active');
 }
 
-// Toast
+function cerrarModalPoliticaCookies() {
+  document.getElementById('modalCookies').classList.remove('active');
+}
+
+// ==========================================
+// BANNER DE COOKIES
+// ==========================================
+function mostrarCookieBanner() {
+  if (localStorage.getItem('cookiesAceptadas')) return;
+  const banner = document.getElementById('cookieBanner');
+  if (banner) banner.style.display = 'flex';
+}
+
+function aceptarCookies() {
+  localStorage.setItem('cookiesAceptadas', 'true');
+  const banner = document.getElementById('cookieBanner');
+  if (banner) banner.style.display = 'none';
+}
+
+// ==========================================
+// TOAST
+// ==========================================
 function mostrarToast(mensaje) {
   const toast = document.getElementById('toastNotification');
   if (!toast) return;

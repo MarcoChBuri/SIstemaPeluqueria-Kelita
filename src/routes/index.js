@@ -31,6 +31,12 @@ const {
   eliminarVentaProducto,
 } = require('../controllers/productos.controller');
 const { reporteSimple } = require('../controllers/reportes.controller');
+const {
+  listarClientes,
+  upsertCliente,
+  actualizarCliente,
+  eliminarCliente,
+} = require('../controllers/clientes.controller');
 
 const router = Router();
 
@@ -91,6 +97,14 @@ router.get('/productos/ventas',         listarVentasProductos);
 router.put('/productos/ventas/:id',     actualizarVentaProducto);
 router.delete('/productos/ventas/:id',  eliminarVentaProducto);
 router.get('/reporte-simple',           reporteSimple);
+
+// ==========================================
+// 8. CLIENTES Y SINCRONIZACIÓN
+// ==========================================
+router.get('/clientes',                 listarClientes);
+router.post('/clientes',                upsertCliente);
+router.put('/clientes/:id',             actualizarCliente);
+router.delete('/clientes/:id',          eliminarCliente);
 
 module.exports = router;
 

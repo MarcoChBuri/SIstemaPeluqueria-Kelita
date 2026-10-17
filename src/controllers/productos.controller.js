@@ -13,13 +13,13 @@ const { supabase } = require('../lib/supabase');
  */
 async function registrarVentaProducto(req, res) {
   try {
-    const { nombre, costo, precio, nombre_producto, precio_costo, precio_venta } = req.body;
+    const { nombre, costo, precio, nombre_producto, precio_costo, precio_venta, cantidad, nombre_cliente, cliente } = req.body;
 
     const nombreFinal = (nombre || nombre_producto || '').trim();
     if (!nombreFinal) {
       return res.status(400).json({
         ok: false,
-        error: 'El nombre del producto es obligatorio.',
+        error: 'El nombre del producto o servicio es obligatorio.',
       });
     }
 
@@ -41,17 +41,21 @@ async function registrarVentaProducto(req, res) {
       });
     }
 
-    // Ganancia calculada
-    const ganancia = precioNum - costoNum;
+    const cantidadNum = Math.max(1, parseInt(cantidad, 10) || 1);
+    const clienteFinal = (nombre_cliente || cliente || null);
+
+    // Ganancia calculada por unidad y total
+    const ganancia = (precioNum - costoNum) * cantidadNum;
 
     const { data, error } = await supabase
       .from('ventas_productos')
       .insert({
         nombre_producto: nombreFinal,
+        nombre_cliente: clienteFinal,
         precio_costo: costoNum,
         precio_venta: precioNum,
-        cantidad: 1,
-        estado_pago: 'verificado',
+        cantidad: cantidadNum,
+        estado_pago: 'pagado',
       })
       .select()
       .single();
@@ -60,7 +64,7 @@ async function registrarVentaProducto(req, res) {
       console.error('[registrarVentaProducto] Supabase error:', error);
       return res.status(500).json({
         ok: false,
-        error: 'No se pudo registrar la venta del producto.',
+        error: 'No se pudo registrar la venta del producto o servicio.',
       });
     }
 
@@ -70,8 +74,13 @@ async function registrarVentaProducto(req, res) {
       data: {
         id: data.id,
         nombre: data.nombre_producto,
+        nombre_producto: data.nombre_producto,
+        nombre_cliente: data.nombre_cliente,
         costo: +costoNum.toFixed(2),
+        precio_costo: +costoNum.toFixed(2),
         precio: +precioNum.toFixed(2),
+        precio_venta: +precioNum.toFixed(2),
+        cantidad: data.cantidad || cantidadNum,
         ganancia: +ganancia.toFixed(2),
         fecha: data.fecha,
       },
@@ -134,8 +143,13 @@ async function listarVentasProductos(req, res) {
       ventas: data.map((v) => ({
         id: v.id,
         nombre: v.nombre_producto,
+        nombre_producto: v.nombre_producto,
+        nombre_cliente: v.nombre_cliente,
         costo: +Number(v.precio_costo).toFixed(2),
+        precio_costo: +Number(v.precio_costo).toFixed(2),
         precio: +Number(v.precio_venta).toFixed(2),
+        precio_venta: +Number(v.precio_venta).toFixed(2),
+        cantidad: v.cantidad || 1,
         ganancia: +(Number(v.precio_venta) - Number(v.precio_costo)).toFixed(2),
         fecha: v.fecha,
       })),
@@ -156,7 +170,7 @@ async function listarVentasProductos(req, res) {
 async function actualizarVentaProducto(req, res) {
   try {
     const { id } = req.params;
-    const { nombre, costo, precio, nombre_producto, precio_costo, precio_venta } = req.body;
+    const { nombre, costo, precio, nombre_producto, precio_costo, precio_venta, cantidad, nombre_cliente, cliente } = req.body;
 
     const updates = {};
     const nombreFinal = (nombre || nombre_producto);
@@ -170,6 +184,13 @@ async function actualizarVentaProducto(req, res) {
     const valorPrecio = precio !== undefined ? precio : precio_venta;
     if (valorPrecio !== undefined) {
       updates.precio_venta = +Number(valorPrecio).toFixed(2);
+    }
+    if (cantidad !== undefined) {
+      updates.cantidad = Math.max(1, parseInt(cantidad, 10) || 1);
+    }
+    const clienteFinal = nombre_cliente !== undefined ? nombre_cliente : cliente;
+    if (clienteFinal !== undefined) {
+      updates.nombre_cliente = clienteFinal;
     }
 
     const { data, error } = await supabase
@@ -190,8 +211,13 @@ async function actualizarVentaProducto(req, res) {
       data: {
         id: data.id,
         nombre: data.nombre_producto,
+        nombre_producto: data.nombre_producto,
+        nombre_cliente: data.nombre_cliente,
         costo: +Number(data.precio_costo).toFixed(2),
+        precio_costo: +Number(data.precio_costo).toFixed(2),
         precio: +Number(data.precio_venta).toFixed(2),
+        precio_venta: +Number(data.precio_venta).toFixed(2),
+        cantidad: data.cantidad || 1,
         ganancia: +(Number(data.precio_venta) - Number(data.precio_costo)).toFixed(2),
         fecha: data.fecha,
       },

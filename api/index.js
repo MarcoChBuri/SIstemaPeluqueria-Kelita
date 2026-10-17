@@ -22,7 +22,7 @@ app.use('/api', routes);
 
 // --- Health check ---
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true, mensaje: 'API de Peluquería Raquel funcionando 🚀' });
+  res.json({ ok: true, mensaje: 'API de Kelita Buri funcionando 🚀' });
 });
 
 // --- Fallback para Frontend ---

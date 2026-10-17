@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/cita.dart';
 import '../providers/app_state_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/top_toast.dart';
 
 class EditAppointmentDialog extends StatefulWidget {
   final Cita cita;
@@ -15,6 +16,7 @@ class EditAppointmentDialog extends StatefulWidget {
 
 class _EditAppointmentDialogState extends State<EditAppointmentDialog> {
   final _formKey = GlobalKey<FormState>();
+  final _scrollController = ScrollController();
 
   late TextEditingController _nombreCtrl;
   late TextEditingController _telefonoCtrl;
@@ -25,6 +27,7 @@ class _EditAppointmentDialogState extends State<EditAppointmentDialog> {
   late DateTime _fecha;
   late TimeOfDay _horaInicio;
   late String _estado;
+  String? _errorMessage;
   bool _isLoading = false;
 
   @override
@@ -56,6 +59,7 @@ class _EditAppointmentDialogState extends State<EditAppointmentDialog> {
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _nombreCtrl.dispose();
     _telefonoCtrl.dispose();
     _precioCtrl.dispose();
@@ -84,6 +88,7 @@ class _EditAppointmentDialogState extends State<EditAppointmentDialog> {
           child: Form(
             key: _formKey,
             child: SingleChildScrollView(
+              controller: _scrollController,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -91,22 +96,27 @@ class _EditAppointmentDialogState extends State<EditAppointmentDialog> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: AppTheme.primaryLight,
-                              borderRadius: BorderRadius.circular(10),
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppTheme.primaryLight,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(Icons.edit_calendar_rounded, color: AppTheme.primary, size: 20),
                             ),
-                            child: const Icon(Icons.edit_calendar_rounded, color: AppTheme.primary, size: 20),
-                          ),
-                          const SizedBox(width: 10),
-                          const Text(
-                            'Editar Cita',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textMain),
-                          ),
-                        ],
+                            const SizedBox(width: 10),
+                            const Expanded(
+                              child: Text(
+                                'Editar Cita',
+                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textMain),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                       IconButton(
                         onPressed: () => Navigator.of(context).pop(),
@@ -115,7 +125,45 @@ class _EditAppointmentDialogState extends State<EditAppointmentDialog> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
+
+                  // ── AVISO DE ERROR DESTACADO ARRIBA ──
+                  if (_errorMessage != null) ...[
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEF2F2),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFFCA5A5)),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.error_outline_rounded, color: AppTheme.danger, size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _errorMessage!,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF991B1B),
+                                fontWeight: FontWeight.bold,
+                                height: 1.3,
+                              ),
+                            ),
+                          ),
+                          InkWell(
+                            onTap: () => setState(() => _errorMessage = null),
+                            child: const Padding(
+                              padding: EdgeInsets.all(2),
+                              child: Icon(Icons.close_rounded, size: 16, color: Color(0xFF991B1B)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
 
                   // Nombre Clienta
                   TextFormField(
@@ -196,18 +244,20 @@ class _EditAppointmentDialogState extends State<EditAppointmentDialog> {
                               context: context,
                               initialTime: _horaInicio,
                             );
+                            if (!context.mounted) return;
                             if (picked != null) {
                               // Validar horario entre 8am y 7pm
                               if (picked.hour < 8 || picked.hour >= 19) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('El salón atiende de 8:00 AM a 7:00 PM.'),
-                                    backgroundColor: AppTheme.danger,
-                                  ),
-                                );
+                                setState(() {
+                                  _errorMessage = '⏰ Horario fuera de rango: El salón atiende de 8:00 AM a 7:00 PM.';
+                                });
+                                TopToast.show(context, message: '⏰ Horario permitido: 8:00 AM a 7:00 PM', isError: true);
                                 return;
                               }
-                              setState(() => _horaInicio = picked);
+                              setState(() {
+                                _horaInicio = picked;
+                                _errorMessage = null;
+                              });
                             }
                           },
                           borderRadius: BorderRadius.circular(14),
@@ -349,8 +399,20 @@ class _EditAppointmentDialogState extends State<EditAppointmentDialog> {
                       Expanded(
                         child: ElevatedButton(
                           onPressed: _isLoading ? null : () async {
-                            if (!_formKey.currentState!.validate()) return;
-                            setState(() => _isLoading = true);
+                            if (!_formKey.currentState!.validate()) {
+                              setState(() {
+                                _errorMessage = 'Por favor completa todos los campos requeridos marcados con *';
+                              });
+                              if (_scrollController.hasClients) {
+                                _scrollController.animateTo(0, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+                              }
+                              TopToast.show(context, message: 'Faltan campos requeridos (*)', isError: true);
+                              return;
+                            }
+                            setState(() {
+                              _isLoading = true;
+                              _errorMessage = null;
+                            });
 
                             final dateStr = '${_fecha.year}-${_fecha.month.toString().padLeft(2, '0')}-${_fecha.day.toString().padLeft(2, '0')}';
                             final timeStr = _formatTimeOfDay(_horaInicio);
@@ -385,22 +447,18 @@ class _EditAppointmentDialogState extends State<EditAppointmentDialog> {
                               await provider.updateCitaCompleta(citaEditada);
                               if (context.mounted) {
                                 Navigator.of(context).pop();
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('✅ Cita actualizada y guardada con éxito.'),
-                                    backgroundColor: Color(0xFF047857),
-                                  ),
-                                );
+                                TopToast.show(context, message: '✅ Cita actualizada y guardada con éxito.', isSuccess: true, isError: false);
                               }
                             } catch (e) {
                               if (context.mounted) {
-                                setState(() => _isLoading = false);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Error al guardar: $e'),
-                                    backgroundColor: AppTheme.danger,
-                                  ),
-                                );
+                                setState(() {
+                                  _isLoading = false;
+                                  _errorMessage = 'No se pudo guardar la cita. Por favor, revisa los datos e inténtalo de nuevo.';
+                                });
+                                if (_scrollController.hasClients) {
+                                  _scrollController.animateTo(0, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+                                }
+                                TopToast.show(context, message: 'No se pudo guardar la cita. Por favor, revisa los datos e inténtalo de nuevo.', isError: true);
                               }
                             }
                           },

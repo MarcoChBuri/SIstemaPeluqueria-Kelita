@@ -930,3 +930,238 @@ h1, h2, h3, h4 {
     display: none;
   }
 }
+
+/* ===================================================
+   PRÓXIMAMENTE BOX (Cursos)
+   =================================================== */
+.proximamente-box {
+  text-align: center;
+  padding: 60px 30px;
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  border: 1px dashed var(--border-gold);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.proximamente-box .proximamente-icon {
+  font-size: 3rem;
+  display: block;
+  margin-bottom: 16px;
+}
+
+.proximamente-box h3 {
+  font-size: 1.8rem;
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 10px;
+}
+
+.proximamente-box p {
+  color: var(--text-muted);
+  font-size: 1rem;
+  max-width: 420px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+/* ===================================================
+   ACCESS DENIED (Admin Bloqueado)
+   =================================================== */
+.access-denied-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 80vh;
+  padding: 40px 20px;
+}
+
+.access-denied-card {
+  text-align: center;
+  padding: 50px 40px;
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  max-width: 500px;
+  box-shadow: var(--shadow-lg);
+}
+
+.access-denied-card .access-denied-icon {
+  font-size: 4rem;
+  display: block;
+  margin-bottom: 20px;
+}
+
+.access-denied-card h2 {
+  font-size: 1.8rem;
+  margin-bottom: 12px;
+  color: var(--danger);
+}
+
+.access-denied-card p {
+  color: var(--text-muted);
+  margin-bottom: 10px;
+  line-height: 1.5;
+}
+
+.access-denied-card .btn {
+  margin-top: 20px;
+}
+
+/* ===================================================
+   COOKIE CONSENT BANNER
+   =================================================== */
+.cookie-banner {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(13, 12, 14, 0.96);
+  border-top: 1px solid var(--border-gold);
+  padding: 16px 24px;
+  z-index: 9999;
+  backdrop-filter: blur(10px);
+  display: none;
+}
+
+.cookie-banner.show {
+  display: block;
+  animation: slideUp 0.4s ease-out;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.cookie-banner-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.cookie-banner-content span {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  flex: 1;
+}
+
+.cookie-banner-content a {
+  color: var(--accent-gold);
+  text-decoration: underline;
+}
+
+/* ===================================================
+   MODAL LEGAL CONTENT
+   =================================================== */
+.modal-legal-content {
+  padding: 10px 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.7;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.modal-legal-content ul {
+  padding-left: 20px;
+  margin: 12px 0;
+}
+
+.modal-legal-content li {
+  margin-bottom: 8px;
+}
+
+.modal-legal-content strong {
+  color: var(--text-main);
+}
+
+/* ===================================================
+   MODAL LOGIN / AUTH SWITCH
+   =================================================== */
+.modal-switch-auth {
+  text-align: center;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-color);
+}
+
+.modal-switch-auth p {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.modal-switch-auth a {
+  color: var(--accent-gold);
+  text-decoration: underline;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ===================================================
+   FOOTER LEGAL
+   =================================================== */
+.footer-legal {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.footer-legal h4 {
+  font-size: 0.95rem;
+  margin-bottom: 4px;
+}
+
+.footer-legal a {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.85rem;
+  transition: var(--transition);
+}
+
+.footer-legal a:hover {
+  color: var(--accent-gold);
+}
+
+.footer-brand h3 {
+  font-size: 1.1rem;
+  margin-bottom: 8px;
+}
+
+.footer-brand p {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  max-width: 320px;
+  line-height: 1.5;
+}
+
+.footer-contact h4 {
+  font-size: 0.95rem;
+  margin-bottom: 8px;
+}
+
+.footer-contact p {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-bottom: 4px;
+}
+
+.footer-contact .btn {
+  margin-top: 10px;
+}
+
+/* ===================================================
+   VISTA SECCIONES (toggle)
+   =================================================== */
+.vista-seccion {
+  display: none;
+}
+
+.vista-seccion.active {
+  display: block;
+}

@@ -3,9 +3,12 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../models/cliente.dart';
 import '../models/promocion.dart';
+import '../models/promocion_cliente.dart';
 import '../providers/app_state_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/phone_utils.dart';
 
 class PromocionesTab extends StatefulWidget {
   const PromocionesTab({super.key});
@@ -243,7 +246,7 @@ class _PromocionesTabState extends State<PromocionesTab> {
                               } catch (e) {
                                 if (ctx.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.danger),
+                                    SnackBar(content: const Text('No se pudo guardar la promoción. Revisa los datos e inténtalo de nuevo.'), backgroundColor: AppTheme.danger),
                                   );
                                 }
                               }
@@ -264,137 +267,453 @@ class _PromocionesTabState extends State<PromocionesTab> {
   }
 
   // Modal para Mostrar el Código QR Exclusivo y Enviar por WhatsApp
-  void _showQrModal(BuildContext context, Promocion promo) {
+  // Modal para Asignar Promoción a una Clienta Específica (Genera QR único)
+  void _openAsignarQrModal(BuildContext context, Promocion promo) {
+    final formKey = GlobalKey<FormState>();
+    final nombreCtrl = TextEditingController();
+    final telCtrl = TextEditingController();
+    Cliente? selectedCliente;
+
     showDialog(
       context: context,
       builder: (ctx) {
-        return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: promo.esPublica ? const Color(0xFFDBEAFE) : const Color(0xFFFFEDD5),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        promo.esPublica ? Icons.public_rounded : Icons.lock_rounded,
-                        size: 14,
-                        color: promo.esPublica ? const Color(0xFF1D4ED8) : const Color(0xFFC2410C),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        promo.esPublica ? 'Promoción Pública Web' : 'Promoción Exclusiva VIP',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: promo.esPublica ? const Color(0xFF1D4ED8) : const Color(0xFFC2410C),
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final provider = Provider.of<AppStateProvider>(context, listen: false);
+            final clientes = provider.clientes;
+
+            return Dialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              child: Padding(
+                padding: const EdgeInsets.all(22),
+                child: Form(
+                  key: formKey,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Expanded(
+                              child: Text(
+                                'Asignar QR a Clienta',
+                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: () => Navigator.of(ctx).pop(),
+                              icon: const Icon(Icons.close_rounded),
+                            ),
+                          ],
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  promo.titulo,
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontSize: 18),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Válido hasta: ${promo.fechaFin}',
-                  style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
-                ),
-                const SizedBox(height: 16),
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryLight,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.local_offer_rounded, size: 14, color: AppTheme.primary),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  '${promo.titulo} · ${promo.porcentajeDescuento != null ? "${promo.porcentajeDescuento}% OFF" : "\$${promo.montoDescuento} OFF"}',
+                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.primary),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
 
-                // Render QR Code
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppTheme.border, width: 2),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: QrImageView(
-                    data: promo.codigoQr,
-                    version: QrVersions.auto,
-                    size: 180.0,
-                    gapless: false,
-                    backgroundColor: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 12),
+                        // Dropdown Selector de Clienta Registrada (opcional para autocompletar)
+                        if (clientes.isNotEmpty) ...[
+                          DropdownButtonFormField<Cliente>(
+                            isExpanded: true,
+                            decoration: const InputDecoration(
+                              labelText: 'Elegir Clienta Registrada',
+                              prefixIcon: Icon(Icons.person_search_rounded, size: 20),
+                            ),
+                            initialValue: selectedCliente,
+                            items: clientes.map((c) {
+                              return DropdownMenuItem<Cliente>(
+                                value: c,
+                                child: Text(
+                                  '${c.nombre} (${c.telefono})',
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 13),
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (c) {
+                              if (c != null) {
+                                setModalState(() {
+                                  selectedCliente = c;
+                                  nombreCtrl.text = c.nombre;
+                                  telCtrl.text = c.telefono;
+                                });
+                              }
+                            },
+                          ),
+                          const SizedBox(height: 12),
+                          const Row(
+                            children: [
+                              Expanded(child: Divider()),
+                              Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 8),
+                                child: Text('O INGRESAR MANUALMENTE', style: TextStyle(fontSize: 9, color: AppTheme.textMuted, fontWeight: FontWeight.bold)),
+                              ),
+                              Expanded(child: Divider()),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                        ],
 
-                // Código Alfanumérico
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8F9FF),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppTheme.border),
-                  ),
-                  child: SelectableText(
-                    'CÓDIGO VIP: ${promo.codigoQr}',
-                    style: const TextStyle(
-                      fontFamily: 'monospace',
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      color: AppTheme.primary,
-                      letterSpacing: 1.2,
+                        TextFormField(
+                          controller: nombreCtrl,
+                          decoration: const InputDecoration(
+                            labelText: 'Nombre de la Clienta *',
+                            prefixIcon: Icon(Icons.person_outline_rounded, size: 20),
+                          ),
+                          validator: (v) => (v == null || v.trim().isEmpty) ? 'Ingresa el nombre' : null,
+                        ),
+                        const SizedBox(height: 12),
+
+                        TextFormField(
+                          controller: telCtrl,
+                          keyboardType: TextInputType.phone,
+                          decoration: const InputDecoration(
+                            labelText: 'Teléfono / WhatsApp *',
+                            prefixIcon: Icon(Icons.phone_outlined, size: 20),
+                            hintText: '0991234567',
+                          ),
+                          validator: (v) => (v == null || v.trim().isEmpty) ? 'Ingresa el teléfono' : null,
+                        ),
+                        const SizedBox(height: 20),
+
+                        SizedBox(
+                          width: double.infinity,
+                          height: 46,
+                          child: ElevatedButton.icon(
+                            onPressed: () async {
+                              if (!formKey.currentState!.validate()) return;
+                              final cId = selectedCliente?.id ?? DateTime.now().millisecondsSinceEpoch.toString();
+                              final nombre = nombreCtrl.text.trim();
+                              final telefono = telCtrl.text.trim();
+
+                              final promoCliente = await provider.asignarPromocionACliente(
+                                clienteId: cId,
+                                clienteNombre: nombre,
+                                clienteTelefono: telefono,
+                                promocionId: promo.id,
+                                promocionTitulo: promo.titulo,
+                              );
+
+                              if (ctx.mounted) {
+                                Navigator.of(ctx).pop();
+                                _showQrClienteModal(context, promo, promoCliente);
+                              }
+                            },
+                            icon: const Icon(Icons.qr_code_rounded, size: 20),
+                            label: const Text('Generar QR y Asignar'),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
 
-                // Botón Compartir por WhatsApp
-                ElevatedButton.icon(
-                  onPressed: () async {
-                    final desc = promo.porcentajeDescuento != null
-                        ? '${promo.porcentajeDescuento}% de descuento'
-                        : '\$${promo.montoDescuento} de descuento';
-                    final msg = Uri.encodeComponent(
-                      '¡Hola! 🎉 Te enviamos un cupón de promoción exclusivo para Peluquería Raquel:\n\n'
-                      '✨ *${promo.titulo}*\n'
-                      '🎁 Beneficio: $desc\n'
-                      '📅 Válido hasta: ${promo.fechaFin}\n'
-                      '🔑 Tu Código de Descuento: *${promo.codigoQr}*\n\n'
-                      'Presenta este mensaje o código al agendar tu cita.'
-                    );
-                    final uri = Uri.parse('https://wa.me/?text=$msg');
-                    if (await canLaunchUrl(uri)) {
-                      await launchUrl(uri, mode: LaunchMode.externalApplication);
-                    }
-                  },
-                  icon: const Icon(Icons.chat_bubble_rounded, color: Colors.white, size: 18),
-                  label: const Text('Enviar QR / Cupón a Cliente (WhatsApp)'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF25D366),
-                    minimumSize: const Size(double.infinity, 44),
+  // Modal para Mostrar el Código QR Único Asignado y Enviar por WhatsApp
+  void _showQrClienteModal(BuildContext context, Promocion promo, PromocionCliente promoCliente) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        final desc = promo.porcentajeDescuento != null
+            ? '${promo.porcentajeDescuento}% de descuento'
+            : '\$${promo.montoDescuento} de descuento';
+        final cleanPhone = formatEcuadorPhone(promoCliente.clienteTelefono);
+
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          child: Padding(
+            padding: const EdgeInsets.all(22),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFDF2F8),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.stars_rounded, size: 14, color: AppTheme.primary),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            'Cupón para ${promoCliente.clienteNombre}',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.primary,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 8),
+                  const SizedBox(height: 10),
+                  Text(
+                    promo.titulo,
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontSize: 18),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Beneficio: $desc · Vence: ${promo.fechaFin}',
+                    style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 14),
 
-                TextButton(
-                  onPressed: () => Navigator.of(ctx).pop(),
-                  child: const Text('Cerrar', style: TextStyle(color: AppTheme.textMuted)),
-                ),
-              ],
+                  // Render QR Code con el código único de la clienta
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: AppTheme.border, width: 2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: QrImageView(
+                      data: promoCliente.codigoQr,
+                      version: QrVersions.auto,
+                      size: 180.0,
+                      gapless: false,
+                      backgroundColor: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Código Alfanumérico Único
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8F9FF),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppTheme.border),
+                    ),
+                    child: SelectableText(
+                      promoCliente.codigoQr,
+                      style: const TextStyle(
+                        fontFamily: 'monospace',
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                        color: AppTheme.primary,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+
+                  // Botón Enviar a la Clienta por WhatsApp
+                  ElevatedButton.icon(
+                    onPressed: () async {
+                      final msg = Uri.encodeComponent(
+                        '¡Hola ${promoCliente.clienteNombre}! 🎉 Te enviamos tu cupón exclusivo para Peluquería Raquel:\n\n'
+                        '✨ *${promo.titulo}*\n'
+                        '🎁 Beneficio: $desc\n'
+                        '📅 Válido hasta: ${promo.fechaFin}\n'
+                        '🔑 Tu Código Único: *${promoCliente.codigoQr}*\n\n'
+                        'Muestra este código o QR al visitarnos para canjear tu promoción.'
+                      );
+                      final uri = Uri.parse('https://wa.me/$cleanPhone?text=$msg');
+                      if (await canLaunchUrl(uri)) {
+                        await launchUrl(uri, mode: LaunchMode.externalApplication);
+                      }
+                    },
+                    icon: const Icon(Icons.chat_bubble_rounded, color: Colors.white, size: 18),
+                    label: Text(
+                      'Enviar por WhatsApp a ${promoCliente.clienteNombre}',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF25D366),
+                      minimumSize: const Size(double.infinity, 44),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+
+                  TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    child: const Text('Cerrar', style: TextStyle(color: AppTheme.textMuted)),
+                  ),
+                ],
+              ),
             ),
           ),
+        );
+      },
+    );
+  }
+
+  // Modal para Ver Todos los Cupones QR Asignados
+  void _openVerCuponesModal(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final provider = Provider.of<AppStateProvider>(context);
+            final cupones = provider.promocionesCliente;
+
+            return Dialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              child: Padding(
+                padding: const EdgeInsets.all(22),
+                child: SizedBox(
+                  width: double.maxFinite,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Expanded(
+                            child: Text(
+                              'Cupones QR Asignados',
+                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => Navigator.of(ctx).pop(),
+                            icon: const Icon(Icons.close_rounded),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Total emitidos: ${cupones.length}',
+                        style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                      ),
+                      const SizedBox(height: 12),
+
+                      if (cupones.isEmpty)
+                        Container(
+                          padding: const EdgeInsets.all(24),
+                          alignment: Alignment.center,
+                          child: const Text(
+                            'No se han asignado cupones a clientas todavía.',
+                            style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                          ),
+                        )
+                      else
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxHeight: 380),
+                          child: ListView.separated(
+                            shrinkWrap: true,
+                            itemCount: cupones.length,
+                            separatorBuilder: (_, index) => const SizedBox(height: 8),
+                            itemBuilder: (context, idx) {
+                              final c = cupones[idx];
+                              return Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: c.canjeado ? const Color(0xFFF9FAFB) : Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: c.canjeado ? const Color(0xFFE5E7EB) : AppTheme.border,
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: c.canjeado ? const Color(0xFFF3F4F6) : AppTheme.primaryLight,
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Icon(
+                                        c.canjeado ? Icons.check_circle_rounded : Icons.qr_code_rounded,
+                                        color: c.canjeado ? const Color(0xFF9CA3AF) : AppTheme.primary,
+                                        size: 20,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            c.clienteNombre,
+                                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                          ),
+                                          Text(
+                                            c.promocionTitulo,
+                                            style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            'Código: ${c.codigoQr}',
+                                            style: const TextStyle(fontFamily: 'monospace', fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.primary),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: c.canjeado ? const Color(0xFFF3F4F6) : const Color(0xFFDCFCE7),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        c.canjeado ? 'CANJEADO' : 'ACTIVO',
+                                        style: TextStyle(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.bold,
+                                          color: c.canjeado ? const Color(0xFF6B7280) : const Color(0xFF166534),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
         );
       },
     );
@@ -588,8 +907,11 @@ class _PromocionesTabState extends State<PromocionesTab> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      alignment: WrapAlignment.spaceBetween,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         const Text(
                           'OFERTAS Y BENEFICIOS',
@@ -600,14 +922,31 @@ class _PromocionesTabState extends State<PromocionesTab> {
                             letterSpacing: 1,
                           ),
                         ),
-                        OutlinedButton.icon(
-                          onPressed: () => _openScannerOrValidateModal(context),
-                          icon: const Icon(Icons.qr_code_scanner_rounded, size: 16),
-                          label: const Text('Validar QR', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                            minimumSize: Size.zero,
-                          ),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 6,
+                          children: [
+                            OutlinedButton.icon(
+                              onPressed: () => _openVerCuponesModal(context),
+                              icon: const Icon(Icons.confirmation_number_outlined, size: 15),
+                              label: Text('Cupones (${provider.promocionesCliente.length})', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                minimumSize: Size.zero,
+                              ),
+                            ),
+                            ElevatedButton.icon(
+                              onPressed: () => _openScannerOrValidateModal(context),
+                              icon: const Icon(Icons.qr_code_scanner_rounded, size: 15),
+                              label: const Text('Validar QR', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.primary,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                minimumSize: Size.zero,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -815,9 +1154,9 @@ class _PromocionesTabState extends State<PromocionesTab> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              // Botón Generar / Compartir QR
+                              // Botón Generar / Asignar QR
                               InkWell(
-                                onTap: () => _showQrModal(context, promo),
+                                onTap: () => _openAsignarQrModal(context, promo),
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                                   decoration: BoxDecoration(
@@ -830,7 +1169,7 @@ class _PromocionesTabState extends State<PromocionesTab> {
                                       Icon(Icons.qr_code_2_rounded, size: 16, color: AppTheme.primary),
                                       SizedBox(width: 4),
                                       Text(
-                                        'Ver / Enviar QR VIP',
+                                        'Asignar QR a Clienta',
                                         style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.primary),
                                       ),
                                     ],

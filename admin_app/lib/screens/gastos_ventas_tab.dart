@@ -6,6 +6,7 @@ import '../models/venta_producto.dart';
 import '../models/cita.dart';
 import '../providers/app_state_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/top_toast.dart';
 
 class GastosVentasTab extends StatefulWidget {
   const GastosVentasTab({super.key});
@@ -74,7 +75,9 @@ class _GastosVentasTabState extends State<GastosVentasTab> with SingleTickerProv
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('Registrar Gasto', style: Theme.of(context).textTheme.headlineMedium),
+                          Flexible(
+                            child: Text('Registrar Gasto', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontSize: 18)),
+                          ),
                           IconButton(
                             onPressed: () => Navigator.of(ctx).pop(),
                             icon: const Icon(Icons.close_rounded),
@@ -130,15 +133,11 @@ class _GastosVentasTabState extends State<GastosVentasTab> with SingleTickerProv
                               );
                               if (ctx.mounted) {
                                 Navigator.of(ctx).pop();
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Gasto guardado con éxito.')),
-                                );
+                                TopToast.show(context, message: 'Gasto guardado con éxito.', isSuccess: true, isError: false);
                               }
                             } catch (e) {
                               if (ctx.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.danger),
-                                );
+                                TopToast.show(context, message: 'No se pudo guardar el registro. Revisa los datos e inténtalo de nuevo.', isError: true);
                               }
                             }
                           },
@@ -181,7 +180,9 @@ class _GastosVentasTabState extends State<GastosVentasTab> with SingleTickerProv
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Venta de Producto', style: Theme.of(context).textTheme.headlineMedium),
+                        Flexible(
+                          child: Text('Venta de Producto', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontSize: 18)),
+                        ),
                         IconButton(
                           onPressed: () => Navigator.of(ctx).pop(),
                           icon: const Icon(Icons.close_rounded),
@@ -256,15 +257,11 @@ class _GastosVentasTabState extends State<GastosVentasTab> with SingleTickerProv
                             );
                             if (ctx.mounted) {
                               Navigator.of(ctx).pop();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Venta de producto registrada.')),
-                              );
+                              TopToast.show(context, message: 'Venta de producto registrada.', isSuccess: true, isError: false);
                             }
                           } catch (e) {
                             if (ctx.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.danger),
-                              );
+                              TopToast.show(context, message: 'No se pudo guardar el registro. Revisa los datos e inténtalo de nuevo.', isError: true);
                             }
                           }
                         },
@@ -303,7 +300,9 @@ class _GastosVentasTabState extends State<GastosVentasTab> with SingleTickerProv
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Servicio Presencial (Sin Cita)', style: Theme.of(context).textTheme.headlineMedium),
+                      Flexible(
+                        child: Text('Servicio Presencial (Sin Cita)', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontSize: 17)),
+                      ),
                       IconButton(
                         onPressed: () => Navigator.of(ctx).pop(),
                         icon: const Icon(Icons.close_rounded),
@@ -354,15 +353,11 @@ class _GastosVentasTabState extends State<GastosVentasTab> with SingleTickerProv
                           );
                           if (ctx.mounted) {
                             Navigator.of(ctx).pop();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Servicio presencial registrado en ganancias.')),
-                            );
+                            TopToast.show(context, message: 'Servicio presencial registrado en ganancias.', isSuccess: true, isError: false);
                           }
                         } catch (e) {
                           if (ctx.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.danger),
-                            );
+                            TopToast.show(context, message: 'No se pudo guardar el registro. Revisa los datos e inténtalo de nuevo.', isError: true);
                           }
                         }
                       },
@@ -406,7 +401,9 @@ class _GastosVentasTabState extends State<GastosVentasTab> with SingleTickerProv
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('Editar Gasto', style: Theme.of(context).textTheme.headlineMedium),
+                          Flexible(
+                            child: Text('Editar Gasto', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontSize: 18)),
+                          ),
                           IconButton(
                             onPressed: () => Navigator.of(ctx).pop(),
                             icon: const Icon(Icons.close_rounded),
@@ -478,15 +475,11 @@ class _GastosVentasTabState extends State<GastosVentasTab> with SingleTickerProv
                                   );
                                   if (ctx.mounted) {
                                     Navigator.pop(ctx);
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('Gasto actualizado correctamente.')),
-                                    );
+                                    TopToast.show(context, message: 'Gasto actualizado correctamente.', isSuccess: true, isError: false);
                                   }
                                 } catch (e) {
                                   if (ctx.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.danger),
-                                    );
+                                    TopToast.show(context, message: 'No se pudo guardar el registro. Revisa los datos e inténtalo de nuevo.', isError: true);
                                   }
                                 }
                               },
@@ -529,15 +522,11 @@ class _GastosVentasTabState extends State<GastosVentasTab> with SingleTickerProv
                 final prov = Provider.of<AppStateProvider>(context, listen: false);
                 await prov.deleteGasto(gasto.id);
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Gasto eliminado.')),
-                  );
+                  TopToast.show(context, message: 'Gasto eliminado.', isSuccess: true, isError: false);
                 }
               } catch (e) {
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error al eliminar: $e'), backgroundColor: AppTheme.danger),
-                  );
+                  TopToast.show(context, message: 'No se pudo eliminar el registro. Inténtalo de nuevo.', isError: true);
                 }
               }
             },
@@ -573,7 +562,9 @@ class _GastosVentasTabState extends State<GastosVentasTab> with SingleTickerProv
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Editar Ingreso / Venta', style: Theme.of(context).textTheme.headlineMedium),
+                        Flexible(
+                          child: Text('Editar Ingreso / Venta', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontSize: 18)),
+                        ),
                         IconButton(
                           onPressed: () => Navigator.of(ctx).pop(),
                           icon: const Icon(Icons.close_rounded),
@@ -662,15 +653,11 @@ class _GastosVentasTabState extends State<GastosVentasTab> with SingleTickerProv
                                 );
                                 if (ctx.mounted) {
                                   Navigator.pop(ctx);
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Ingreso actualizado correctamente.')),
-                                  );
+                                  TopToast.show(context, message: 'Ingreso actualizado correctamente.', isSuccess: true, isError: false);
                                 }
                               } catch (e) {
                                 if (ctx.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.danger),
-                                  );
+                                  TopToast.show(context, message: 'No se pudo guardar el registro. Revisa los datos e inténtalo de nuevo.', isError: true);
                                 }
                               }
                             },
@@ -712,15 +699,11 @@ class _GastosVentasTabState extends State<GastosVentasTab> with SingleTickerProv
                 final prov = Provider.of<AppStateProvider>(context, listen: false);
                 await prov.deleteVentaProducto(venta.id);
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Ingreso eliminado.')),
-                  );
+                  TopToast.show(context, message: 'Ingreso eliminado.', isSuccess: true, isError: false);
                 }
               } catch (e) {
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error al eliminar: $e'), backgroundColor: AppTheme.danger),
-                  );
+                  TopToast.show(context, message: 'No se pudo eliminar el registro. Inténtalo de nuevo.', isError: true);
                 }
               }
             },
@@ -811,15 +794,11 @@ class _GastosVentasTabState extends State<GastosVentasTab> with SingleTickerProv
                         try {
                           await prov.updateCitaStatus(cita.id, estadoPago: 'pendiente');
                           if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Cobro desmarcado (vuelve a pendiente).')),
-                            );
+                            TopToast.show(context, message: 'Cobro desmarcado (vuelve a pendiente).', isSuccess: true, isError: false);
                           }
                         } catch (e) {
                           if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.danger),
-                            );
+                            TopToast.show(context, message: 'No se pudo guardar el registro. Revisa los datos e inténtalo de nuevo.', isError: true);
                           }
                         }
                       },
@@ -841,15 +820,11 @@ class _GastosVentasTabState extends State<GastosVentasTab> with SingleTickerProv
                         try {
                           await prov.updateCitaPrecio(cita.id, nuevo);
                           if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Monto de cita actualizado.')),
-                            );
+                            TopToast.show(context, message: 'Monto de cita actualizado.', isSuccess: true, isError: false);
                           }
                         } catch (e) {
                           if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.danger),
-                            );
+                            TopToast.show(context, message: 'No se pudo guardar el registro. Revisa los datos e inténtalo de nuevo.', isError: true);
                           }
                         }
                       },
@@ -888,15 +863,11 @@ class _GastosVentasTabState extends State<GastosVentasTab> with SingleTickerProv
                 final prov = Provider.of<AppStateProvider>(context, listen: false);
                 await prov.deleteCita(cita.id);
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Cita eliminada de la agenda y ganancias.')),
-                  );
+                  TopToast.show(context, message: 'Cita eliminada de la agenda y ganancias.', isSuccess: true, isError: false);
                 }
               } catch (e) {
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error al eliminar cita: $e'), backgroundColor: AppTheme.danger),
-                  );
+                  TopToast.show(context, message: 'No se pudo eliminar la cita. Inténtalo de nuevo.', isError: true);
                 }
               }
             },

@@ -11,7 +11,6 @@ import 'galeria_cursos_tab.dart';
 import 'gastos_ventas_tab.dart';
 import 'promociones_tab.dart';
 import 'servicios_tab.dart';
-import 'settings_dialog.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -87,7 +86,7 @@ class _HomeScreenState extends State<HomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Raquel Admin',
+                  'Kelita Buri',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textMain),
                 ),
                 Text(
@@ -134,11 +133,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 10),
                   const Text(
-                    'Peluquería Raquel',
+                    'Kelita Buri',
                     style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                   const Text(
-                    'Panel de Administración Móvil',
+                    'Studio & Belleza',
                     style: TextStyle(color: Color(0xFFFFD9E4), fontSize: 12),
                   ),
                 ],
@@ -153,17 +152,6 @@ class _HomeScreenState extends State<HomeScreen> {
             _buildDrawerItem(6, 'Promociones', Icons.local_offer_rounded),
             _buildDrawerItem(7, 'Galería & Cursos', Icons.school_rounded),
             const Divider(),
-            ListTile(
-              leading: const Icon(Icons.settings_rounded, color: AppTheme.textMuted),
-              title: const Text('Configuración del Servidor', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-              onTap: () {
-                Navigator.of(context).pop();
-                showDialog(
-                  context: context,
-                  builder: (_) => const SettingsDialog(),
-                );
-              },
-            ),
           ],
         ),
       ),

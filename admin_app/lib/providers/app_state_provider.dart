@@ -1,10 +1,12 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/cita.dart';
 import '../models/servicio.dart';
 import '../models/promocion.dart';
+import '../models/promocion_cliente.dart';
 import '../models/gasto.dart';
 import '../models/venta_producto.dart';
 import '../models/reporte_financiero.dart';
@@ -14,12 +16,79 @@ import '../models/evento_nota.dart';
 import '../models/cliente.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
+import '../utils/phone_utils.dart';
 
 class AppStateProvider extends ChangeNotifier {
   final ApiService _api = ApiService();
 
+  static final List<Servicio> defaultServicios = [
+    Servicio(
+      id: '1b1e42e8-81e1-4d01-91a6-ba0978e209ed',
+      nombre: 'Corte de Cabello Caballeros',
+      categoria: 'corte',
+      duracionMinutos: 30,
+      precioBase: 8.0,
+      descripcion: 'Degradado / clásico con lavado y perfilado.',
+      activo: true,
+    ),
+    Servicio(
+      id: '314abaf4-14a7-44cf-9802-fbb43866e1b1',
+      nombre: 'Corte de Cabello & Peinado Damas',
+      categoria: 'corte',
+      duracionMinutos: 45,
+      precioBase: 15.0,
+      descripcion: 'Lavado especial, asesoría de visagismo, corte y secado con ondas.',
+      activo: true,
+    ),
+    Servicio(
+      id: '62e18ce9-892f-4c67-a72a-dabab20d0529',
+      nombre: 'Balayage & Colorimetría Premium',
+      categoria: 'colorimetria',
+      duracionMinutos: 180,
+      precioBase: 85.0,
+      descripcion: 'Diseño de color personalizado, decoloración y matiz con tratamiento hidratante.',
+      activo: true,
+    ),
+    Servicio(
+      id: '8df466a9-66be-4f86-b545-4d6ae5d829c4',
+      nombre: 'Alisado Orgánico Pro',
+      categoria: 'tratamiento',
+      duracionMinutos: 150,
+      precioBase: 70.0,
+      descripcion: 'Tratamiento sin formol que reestructura y alisa el cabello hasta por 4 meses.',
+      activo: true,
+    ),
+    Servicio(
+      id: '69bcf344-eb28-4a8a-84e1-a7cef32946be',
+      nombre: 'Lifting de Pestañas & Perfilado Cejas',
+      categoria: 'pestanas_cejas',
+      duracionMinutos: 60,
+      precioBase: 25.0,
+      descripcion: 'Curvatura natural de pestañas con keratina y diseño de cejas con tinte henna.',
+      activo: true,
+    ),
+    Servicio(
+      id: '6c24b788-c666-4924-8ac2-c2f683ff65ea',
+      nombre: 'Paquete Novia Radiante (Boda)',
+      categoria: 'paquete_bodas',
+      duracionMinutos: 240,
+      precioBase: 150.0,
+      descripcion: 'Prueba de peinado + peinado día del evento + maquillaje blindado con fijación 24h + colocación de velo.',
+      activo: true,
+    ),
+    Servicio(
+      id: '1732bee4-4e03-4f50-b6ca-2f89681e2ae2',
+      nombre: 'Paquete Quinceañera Encantada',
+      categoria: 'paquete_quinceanera',
+      duracionMinutos: 180,
+      precioBase: 95.0,
+      descripcion: 'Maquillaje profesional HD + peinado con corona/tocado + pestañas punto a punto.',
+      activo: true,
+    ),
+  ];
+
   List<Cita> _citas = [];
-  List<Servicio> _servicios = [];
+  List<Servicio> _servicios = List.from(defaultServicios);
   List<Promocion> _promociones = [];
   List<Cliente> _clientes = [];
   ReporteFinanciero? _reporte;
@@ -31,6 +100,7 @@ class AppStateProvider extends ChangeNotifier {
   List<GaleriaItem> _galeria = [];
   List<CursoItem> _cursos = [];
   List<EventoNota> _eventosNotas = [];
+  List<PromocionCliente> _promocionesCliente = [];
 
   bool _isLoading = false;
   bool _isBackendConnected = false;
@@ -50,10 +120,29 @@ class AppStateProvider extends ChangeNotifier {
   List<GaleriaItem> get galeria => _galeria;
   List<CursoItem> get cursos => _cursos;
   List<EventoNota> get eventosNotas => _eventosNotas;
+  List<PromocionCliente> get promocionesCliente => _promocionesCliente;
   bool get isLoading => _isLoading;
   bool get isBackendConnected => _isBackendConnected;
   String? get errorMessage => _errorMessage;
   String get currentBaseUrl => _api.currentBaseUrl;
+
+  /// Normaliza un número telefónico para WhatsApp (código Ecuador 593)
+  static String normalizarTelefonoWhatsApp(String telefono) {
+    String clean = telefono.replaceAll(RegExp(r'[^0-9+]'), '');
+    // Si empieza con + ya tiene código de país
+    if (clean.startsWith('+')) {
+      clean = clean.substring(1);
+    }
+    // Si empieza con 0 → quitar y poner 593 (Ecuador)
+    if (clean.startsWith('0')) {
+      clean = '593${clean.substring(1)}';
+    }
+    // Si tiene 9-10 dígitos sin código de país → asumir Ecuador
+    if (clean.length <= 10 && !clean.startsWith('593')) {
+      clean = '593$clean';
+    }
+    return clean;
+  }
 
   DateTime? _parseDate(String dateStr) {
     try {
@@ -175,6 +264,7 @@ class AppStateProvider extends ChangeNotifier {
   Future<void> init() async {
     await _api.init();
     await _loadEventosNotas();
+    await _loadPromocionesCliente();
     await _loadAllCaches();
     await loadAllData();
   }
@@ -211,7 +301,14 @@ class AppStateProvider extends ChangeNotifier {
       final rawServicios = prefs.getString('raquel_servicios_cache');
       if (rawServicios != null && rawServicios.isNotEmpty) {
         final List decoded = jsonDecode(rawServicios);
-        _servicios = decoded.map((e) => Servicio.fromJson(e)).toList();
+        final loaded = decoded.map((e) => Servicio.fromJson(e)).toList();
+        if (loaded.isNotEmpty) {
+          _servicios = loaded;
+        } else {
+          _servicios = List.from(defaultServicios);
+        }
+      } else if (_servicios.isEmpty) {
+        _servicios = List.from(defaultServicios);
       }
 
       final rawClientes = prefs.getString('raquel_clientes_cache');
@@ -219,6 +316,22 @@ class AppStateProvider extends ChangeNotifier {
         final List decoded = jsonDecode(rawClientes);
         _clientes = decoded.map((e) => Cliente.fromJson(e)).toList();
       }
+
+      final rawVentas = prefs.getString('raquel_ventas_cache');
+      if (rawVentas != null && rawVentas.isNotEmpty) {
+        final List decoded = jsonDecode(rawVentas);
+        _ventas = decoded.map((e) => VentaProducto.fromJson(e)).toList();
+        _totalVentas = _ventas.fold(0.0, (sum, v) => sum + (v.precioVenta * v.cantidad));
+        _gananciaVentas = _ventas.fold(0.0, (sum, v) => sum + ((v.precioVenta - v.precioCosto) * v.cantidad));
+      }
+
+      final rawGastos = prefs.getString('raquel_gastos_cache');
+      if (rawGastos != null && rawGastos.isNotEmpty) {
+        final List decoded = jsonDecode(rawGastos);
+        _gastos = decoded.map((e) => Gasto.fromJson(e)).toList();
+        _totalGastos = _gastos.fold(0.0, (sum, g) => sum + g.monto);
+      }
+
       _actualizarClientesDesdeCitas();
     } catch (_) {}
   }
@@ -248,29 +361,67 @@ class AppStateProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
-  void _actualizarClientesDesdeCitas() {
+  Future<void> _saveVentasCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = jsonEncode(_ventas.map((v) => v.toJson()).toList());
+      await prefs.setString('raquel_ventas_cache', raw);
+    } catch (_) {}
+  }
+
+  Future<void> _saveGastosCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = jsonEncode(_gastos.map((g) => g.toJson()).toList());
+      await prefs.setString('raquel_gastos_cache', raw);
+    } catch (_) {}
+  }
+
+  String _clienteKey(String telefono, String nombre) {
+    final cleanPhone = formatEcuadorPhone(telefono);
+    if (cleanPhone.isNotEmpty) return cleanPhone;
+    return nombre.trim().toLowerCase();
+  }
+
+  void _actualizarClientesDesdeCitas([List<Cliente>? apiList]) {
     final Map<String, Cliente> mapa = {};
+
+    // 1. Clientes locales
     for (var c in _clientes) {
-      final key = c.telefono.trim().isNotEmpty ? c.telefono.trim() : c.nombre.trim().toLowerCase();
+      final key = _clienteKey(c.telefono, c.nombre);
       if (key.isNotEmpty) mapa[key] = c;
     }
+
+    // 2. Si vienen de la BD / API (centralizados y autoritativos)
+    if (apiList != null) {
+      for (var inc in apiList) {
+        final key = _clienteKey(inc.telefono, inc.nombre);
+        if (key.isEmpty) continue;
+        final existing = mapa[key];
+        if (existing == null) {
+          mapa[key] = inc;
+        } else {
+          mapa[key] = Cliente(
+            id: inc.id.isNotEmpty ? inc.id : existing.id,
+            nombre: inc.nombre.isNotEmpty ? inc.nombre : existing.nombre,
+            telefono: inc.telefono.isNotEmpty ? inc.telefono : existing.telefono,
+            email: inc.email ?? existing.email,
+            notas: (inc.notas != null && inc.notas!.isNotEmpty) ? inc.notas : existing.notas,
+            totalCitas: max(inc.totalCitas, existing.totalCitas),
+            totalGastado: max(inc.totalGastado, existing.totalGastado),
+            ultimaVisita: inc.ultimaVisita ?? existing.ultimaVisita,
+          );
+        }
+      }
+    }
+
+    // 3. Revisar el historial de citas para complementar citas de clientes existentes o nuevos
     for (var cita in _citas) {
-      final key = cita.clienteTelefono.trim().isNotEmpty ? cita.clienteTelefono.trim() : cita.clienteNombre.trim().toLowerCase();
+      final key = _clienteKey(cita.clienteTelefono, cita.clienteNombre);
       if (key.isEmpty) continue;
       final existing = mapa[key];
       final esPagada = cita.estadoPago == 'pagado' || cita.estado == 'completada' || cita.estado == 'realizada';
-      if (existing != null) {
-        mapa[key] = Cliente(
-          id: existing.id,
-          nombre: existing.nombre.isNotEmpty ? existing.nombre : cita.clienteNombre,
-          telefono: existing.telefono.isNotEmpty ? existing.telefono : cita.clienteTelefono,
-          email: existing.email ?? cita.clienteEmail,
-          notas: existing.notas ?? cita.notas,
-          totalCitas: existing.totalCitas + 1,
-          totalGastado: existing.totalGastado + (esPagada ? cita.precioFinal : 0.0),
-          ultimaVisita: cita.fechaCita,
-        );
-      } else {
+      if (existing == null) {
         mapa[key] = Cliente(
           id: cita.id,
           nombre: cita.clienteNombre,
@@ -283,21 +434,39 @@ class AppStateProvider extends ChangeNotifier {
         );
       }
     }
+
     _clientes = mapa.values.toList();
     _clientes.sort((a, b) => b.totalCitas.compareTo(a.totalCitas));
   }
 
   Future<void> addCliente(Cliente cliente) async {
-    _clientes.removeWhere((c) => c.id == cliente.id || (c.telefono.isNotEmpty && c.telefono == cliente.telefono));
+    final key = _clienteKey(cliente.telefono, cliente.nombre);
+    _clientes.removeWhere((c) => _clienteKey(c.telefono, c.nombre) == key);
     _clientes.insert(0, cliente);
     await _saveClientesCache();
     notifyListeners();
+
+    try {
+      final saved = await _api.saveCliente(cliente);
+      final idx = _clientes.indexWhere((c) => _clienteKey(c.telefono, c.nombre) == key);
+      if (idx != -1) {
+        _clientes[idx] = saved;
+        await _saveClientesCache();
+        notifyListeners();
+      }
+    } catch (_) {
+      // Offline fallback: permanece en caché local
+    }
   }
 
   Future<void> removeCliente(String id) async {
     _clientes.removeWhere((c) => c.id == id);
     await _saveClientesCache();
     notifyListeners();
+
+    try {
+      await _api.deleteCliente(id);
+    } catch (_) {}
   }
 
   Future<void> addEventoNota(EventoNota evento) async {
@@ -347,6 +516,7 @@ class AppStateProvider extends ChangeNotifier {
         _api.getVentasProductos().catchError((_) => {'total_ventas': 0.0, 'ganancia_total': 0.0, 'ventas': <VentaProducto>[]}),
         _api.getGaleria().catchError((_) => <GaleriaItem>[]),
         _api.getCursos().catchError((_) => <CursoItem>[]),
+        _api.getClientes().catchError((_) => <Cliente>[]),
       ]);
 
       final apiCitas = results[0] as List<Cita>;
@@ -357,8 +527,11 @@ class AppStateProvider extends ChangeNotifier {
       }
 
       final apiServicios = results[1] as List<Servicio>;
-      if (apiServicios.isNotEmpty || _isBackendConnected) {
+      if (apiServicios.isNotEmpty) {
         _servicios = apiServicios;
+        await _saveServiciosCache();
+      } else if (_servicios.isEmpty) {
+        _servicios = List.from(defaultServicios);
         await _saveServiciosCache();
       }
 
@@ -368,16 +541,20 @@ class AppStateProvider extends ChangeNotifier {
       final gastosMap = results[4] as Map<String, dynamic>;
       _gastos = gastosMap['gastos'] as List<Gasto>;
       _totalGastos = gastosMap['total'] as double;
+      await _saveGastosCache();
 
       final ventasMap = results[5] as Map<String, dynamic>;
       _ventas = ventasMap['ventas'] as List<VentaProducto>;
       _totalVentas = ventasMap['total_ventas'] as double;
       _gananciaVentas = ventasMap['ganancia_total'] as double;
+      await _saveVentasCache();
 
       _galeria = results[6] as List<GaleriaItem>;
       _cursos = results[7] as List<CursoItem>;
+      final apiClientes = results[8] as List<Cliente>;
 
-      _actualizarClientesDesdeCitas();
+      _actualizarClientesDesdeCitas(apiClientes);
+      await _saveClientesCache();
       _isBackendConnected = _reporte?.ok == true || apiCitas.isNotEmpty || apiServicios.isNotEmpty;
     } catch (e) {
       _errorMessage = e.toString();
@@ -641,6 +818,12 @@ class AppStateProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> restaurarServiciosPredeterminados() async {
+    _servicios = List.from(defaultServicios);
+    await _saveServiciosCache();
+    notifyListeners();
+  }
+
   // Promociones Actions
   Future<Promocion> createPromocion({
     required String titulo,
@@ -718,7 +901,18 @@ class AppStateProvider extends ChangeNotifier {
   }
 
   Future<Map<String, dynamic>> validarQrPromocion(String codigoQr) async {
-    return _api.validarQrPromocion(codigoQr);
+    // 1. Revisar primero en cupones asignados a clientas específicas
+    final localResult = canjearQrPromocionCliente(codigoQr);
+    if (localResult['valida'] == true ||
+        (localResult['mensaje']?.toString().contains('ya fue canjeado') ?? false)) {
+      return localResult;
+    }
+    // 2. Si no es un QR asignado localmente, consultar con el backend
+    try {
+      return await _api.validarQrPromocion(codigoQr);
+    } catch (_) {
+      return localResult;
+    }
   }
 
 
@@ -728,9 +922,21 @@ class AppStateProvider extends ChangeNotifier {
     required String categoria,
     String? concepto,
   }) async {
-    final g = await _api.createGasto(monto: monto, categoria: categoria, concepto: concepto);
+    Gasto g;
+    try {
+      g = await _api.createGasto(monto: monto, categoria: categoria, concepto: concepto);
+    } catch (_) {
+      g = Gasto(
+        id: 'local_${DateTime.now().millisecondsSinceEpoch}',
+        fecha: DateTime.now().toIso8601String(),
+        monto: monto,
+        categoria: categoria,
+        concepto: concepto,
+      );
+    }
     _gastos.insert(0, g);
     _totalGastos += g.monto;
+    await _saveGastosCache();
     refreshReporte();
     notifyListeners();
     return g;
@@ -742,12 +948,24 @@ class AppStateProvider extends ChangeNotifier {
     required String categoria,
     String? concepto,
   }) async {
-    final updated = await _api.updateGasto(id, monto: monto, categoria: categoria, concepto: concepto);
+    Gasto updated;
+    try {
+      updated = await _api.updateGasto(id, monto: monto, categoria: categoria, concepto: concepto);
+    } catch (_) {
+      updated = Gasto(
+        id: id,
+        fecha: DateTime.now().toIso8601String(),
+        monto: monto,
+        categoria: categoria,
+        concepto: concepto,
+      );
+    }
     final idx = _gastos.indexWhere((g) => g.id == id);
     if (idx != -1) {
       _totalGastos = _totalGastos - _gastos[idx].monto + updated.monto;
       _gastos[idx] = updated;
     }
+    await _saveGastosCache();
     refreshReporte();
     notifyListeners();
   }
@@ -761,6 +979,7 @@ class AppStateProvider extends ChangeNotifier {
       _totalGastos -= _gastos[idx].monto;
       _gastos.removeAt(idx);
     }
+    await _saveGastosCache();
     refreshReporte();
     notifyListeners();
   }
@@ -773,16 +992,31 @@ class AppStateProvider extends ChangeNotifier {
     int cantidad = 1,
     String? nombreCliente,
   }) async {
-    final v = await _api.createVentaProducto(
-      nombre: nombre,
-      costo: costo,
-      precio: precio,
-      cantidad: cantidad,
-      nombreCliente: nombreCliente,
-    );
+    VentaProducto v;
+    try {
+      v = await _api.createVentaProducto(
+        nombre: nombre,
+        costo: costo,
+        precio: precio,
+        cantidad: cantidad,
+        nombreCliente: nombreCliente,
+      );
+    } catch (_) {
+      v = VentaProducto(
+        id: 'local_${DateTime.now().millisecondsSinceEpoch}',
+        fecha: DateTime.now().toIso8601String(),
+        nombreProducto: nombre,
+        nombreCliente: nombreCliente,
+        precioCosto: costo,
+        precioVenta: precio,
+        cantidad: cantidad,
+        ganancia: (precio - costo) * cantidad,
+      );
+    }
     _ventas.insert(0, v);
     _totalVentas += (v.precioVenta * v.cantidad);
     _gananciaVentas += ((v.precioVenta - v.precioCosto) * v.cantidad);
+    await _saveVentasCache();
     refreshReporte();
     notifyListeners();
     return v;
@@ -796,14 +1030,28 @@ class AppStateProvider extends ChangeNotifier {
     int cantidad = 1,
     String? nombreCliente,
   }) async {
-    final updated = await _api.updateVentaProducto(
-      id,
-      nombre: nombre,
-      costo: costo,
-      precio: precio,
-      cantidad: cantidad,
-      nombreCliente: nombreCliente,
-    );
+    VentaProducto updated;
+    try {
+      updated = await _api.updateVentaProducto(
+        id,
+        nombre: nombre,
+        costo: costo,
+        precio: precio,
+        cantidad: cantidad,
+        nombreCliente: nombreCliente,
+      );
+    } catch (_) {
+      updated = VentaProducto(
+        id: id,
+        fecha: DateTime.now().toIso8601String(),
+        nombreProducto: nombre,
+        nombreCliente: nombreCliente,
+        precioCosto: costo,
+        precioVenta: precio,
+        cantidad: cantidad,
+        ganancia: (precio - costo) * cantidad,
+      );
+    }
     final idx = _ventas.indexWhere((v) => v.id == id);
     if (idx != -1) {
       final old = _ventas[idx];
@@ -811,6 +1059,7 @@ class AppStateProvider extends ChangeNotifier {
       _gananciaVentas = _gananciaVentas - ((old.precioVenta - old.precioCosto) * old.cantidad) + ((updated.precioVenta - updated.precioCosto) * updated.cantidad);
       _ventas[idx] = updated;
     }
+    await _saveVentasCache();
     refreshReporte();
     notifyListeners();
   }
@@ -826,6 +1075,7 @@ class AppStateProvider extends ChangeNotifier {
       _gananciaVentas -= ((old.precioVenta - old.precioCosto) * old.cantidad);
       _ventas.removeAt(idx);
     }
+    await _saveVentasCache();
     refreshReporte();
     notifyListeners();
   }
@@ -856,5 +1106,97 @@ class AppStateProvider extends ChangeNotifier {
     } catch (_) {}
     _galeria.removeWhere((g) => g.id == id);
     notifyListeners();
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // PROMOCIONES POR CLIENTA (QR único asignado)
+  // ═══════════════════════════════════════════════════════════
+
+  Future<void> _loadPromocionesCliente() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final rawJson = prefs.getString('raquel_promociones_cliente');
+      if (rawJson != null && rawJson.isNotEmpty) {
+        final List decoded = jsonDecode(rawJson);
+        _promocionesCliente = decoded.map((e) => PromocionCliente.fromJson(e)).toList();
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _savePromocionesCliente() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final rawJson = jsonEncode(_promocionesCliente.map((e) => e.toJson()).toList());
+      await prefs.setString('raquel_promociones_cliente', rawJson);
+    } catch (_) {}
+  }
+
+  /// Genera un código QR único tipo "RAQUEL-XXXX-YYYY"
+  String _generarCodigoQrUnico() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    final rand = Random();
+    final part1 = List.generate(4, (_) => chars[rand.nextInt(chars.length)]).join();
+    final part2 = List.generate(4, (_) => chars[rand.nextInt(chars.length)]).join();
+    return 'RAQUEL-$part1-$part2';
+  }
+
+  /// Asigna una promoción existente a una clienta → genera QR único
+  Future<PromocionCliente> asignarPromocionACliente({
+    required String clienteId,
+    required String clienteNombre,
+    required String clienteTelefono,
+    required String promocionId,
+    required String promocionTitulo,
+  }) async {
+    final codigo = _generarCodigoQrUnico();
+    final nueva = PromocionCliente(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      clienteId: clienteId,
+      clienteNombre: clienteNombre,
+      clienteTelefono: clienteTelefono,
+      promocionId: promocionId,
+      promocionTitulo: promocionTitulo,
+      codigoQr: codigo,
+      fechaAsignacion: DateFormat('yyyy-MM-dd').format(DateTime.now()),
+    );
+    _promocionesCliente.insert(0, nueva);
+    await _savePromocionesCliente();
+    notifyListeners();
+    return nueva;
+  }
+
+  /// Canjea / Gasta un QR de promoción por código
+  /// Retorna info del resultado
+  Map<String, dynamic> canjearQrPromocionCliente(String codigoQr) {
+    final idx = _promocionesCliente.indexWhere(
+      (p) => p.codigoQr.toUpperCase() == codigoQr.toUpperCase(),
+    );
+    if (idx == -1) {
+      return {'valida': false, 'mensaje': 'Código QR no encontrado en el sistema.'};
+    }
+    final promo = _promocionesCliente[idx];
+    if (promo.canjeado) {
+      return {
+        'valida': false,
+        'mensaje': 'Este QR ya fue canjeado el ${promo.fechaCanje}. No se puede reutilizar.',
+      };
+    }
+    // Marcar como canjeado
+    _promocionesCliente[idx] = promo.copyWith(
+      canjeado: true,
+      fechaCanje: DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now()),
+    );
+    _savePromocionesCliente();
+    notifyListeners();
+    return {
+      'valida': true,
+      'mensaje': '✅ Promoción "${promo.promocionTitulo}" canjeada exitosamente para ${promo.clienteNombre}.',
+      'promocion': _promocionesCliente[idx],
+    };
+  }
+
+  /// Obtener todas las promos asignadas a una clienta por su ID
+  List<PromocionCliente> getPromocionesDeCliente(String clienteId) {
+    return _promocionesCliente.where((p) => p.clienteId == clienteId).toList();
   }
 }

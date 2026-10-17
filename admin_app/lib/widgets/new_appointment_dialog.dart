@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/servicio.dart';
 import '../providers/app_state_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/top_toast.dart';
 
 class NewAppointmentDialog extends StatefulWidget {
   final DateTime? initialDate;
@@ -18,15 +19,17 @@ class NewAppointmentDialog extends StatefulWidget {
 
 class _NewAppointmentDialogState extends State<NewAppointmentDialog> {
   final _formKey = GlobalKey<FormState>();
+  final _scrollController = ScrollController();
   final _nombreController = TextEditingController();
   final _telefonoController = TextEditingController();
   final _emailController = TextEditingController();
   final _notasController = TextEditingController();
 
-  // Categorías y servicio seleccionado
+  // Categoría seleccionada: null al inicio para mostrar solo las categorías primero
   String? _selectedCategoria;
   String? _selectedServicioId;
   String? _selectedPromocionId;
+  String? _errorMessage;
   late DateTime _selectedDate;
   TimeOfDay _selectedTime = const TimeOfDay(hour: 10, minute: 0);
   int _selectedDuracionMinutos = 60;
@@ -45,15 +48,15 @@ class _NewAppointmentDialogState extends State<NewAppointmentDialog> {
     return true;
   }
 
-  // Mapa de categorías con icono y color
-  static const Map<String, Map<String, dynamic>> _categoryMeta = {
-    'corte': {'label': 'Cortes', 'icon': Icons.content_cut_rounded, 'color': Color(0xFFBE185D)},
-    'color': {'label': 'Colores', 'icon': Icons.palette_rounded, 'color': Color(0xFF7C3AED)},
-    'paquete': {'label': 'Paquetes', 'icon': Icons.card_giftcard_rounded, 'color': Color(0xFF0891B2)},
-    'tratamiento': {'label': 'Tratamientos', 'icon': Icons.spa_rounded, 'color': Color(0xFF059669)},
-    'peinado': {'label': 'Peinados', 'icon': Icons.face_retouching_natural_rounded, 'color': Color(0xFFD97706)},
-    'otro': {'label': 'Otros', 'icon': Icons.category_rounded, 'color': Color(0xFF6B7280)},
-  };
+  // Categorías del salón (sin 'todos') para selección directa
+  static const List<Map<String, dynamic>> _categoriasFiltro = [
+    {'id': 'corte', 'label': 'Cortes', 'icon': Icons.content_cut_rounded},
+    {'id': 'color', 'label': 'Colorimetría', 'icon': Icons.palette_outlined},
+    {'id': 'tratamiento', 'label': 'Tratamientos', 'icon': Icons.spa_outlined},
+    {'id': 'pestanas', 'label': 'Pestañas & Cejas', 'icon': Icons.visibility_outlined},
+    {'id': 'peinado', 'label': 'Peinados & MakeUp', 'icon': Icons.face_retouching_natural_rounded},
+    {'id': 'paquete', 'label': 'Paquetes & Bodas', 'icon': Icons.card_giftcard_rounded},
+  ];
 
   @override
   void initState() {
@@ -63,6 +66,7 @@ class _NewAppointmentDialogState extends State<NewAppointmentDialog> {
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _nombreController.dispose();
     _telefonoController.dispose();
     _emailController.dispose();
@@ -70,16 +74,39 @@ class _NewAppointmentDialogState extends State<NewAppointmentDialog> {
     super.dispose();
   }
 
-  // Normaliza la categoría del servicio a las claves del mapa
-  String _normalizarCategoria(String raw) {
-    final c = raw.toLowerCase().trim();
-    if (c.contains('corte') || c.contains('cut')) return 'corte';
-    if (c.contains('color') || c.contains('tinte') || c.contains('decolor') ||
-        c.contains('mech') || c.contains('matiz') || c.contains('balan')) return 'color';
-    if (c.contains('paquete') || c.contains('combo')) return 'paquete';
-    if (c.contains('tratamiento') || c.contains('keratina') || c.contains('botox')) return 'tratamiento';
-    if (c.contains('peinado') || c.contains('brushing') || c.contains('alaciado')) return 'peinado';
-    return 'otro';
+  // Comprueba si un servicio coincide con la categoría seleccionada
+  bool _servicioEnCategoria(Servicio s, String catId) {
+    final svcCat = s.categoria.toLowerCase().trim();
+    final svcNom = s.nombre.toLowerCase().trim();
+    final combined = '$svcCat $svcNom';
+
+    if (catId == 'corte') {
+      return svcCat == 'corte' || combined.contains('corte') || combined.contains('cut');
+    }
+    if (catId == 'color' || catId == 'colorimetria') {
+      return svcCat.contains('color') || combined.contains('color') || combined.contains('tinte') || combined.contains('balayage') || combined.contains('decolor') || combined.contains('matiz');
+    }
+    if (catId == 'tratamiento') {
+      return svcCat.contains('tratam') || combined.contains('tratam') || combined.contains('alisad') || combined.contains('keratina') || combined.contains('botox');
+    }
+    if (catId == 'pestanas' || catId == 'pestanas_cejas') {
+      return svcCat.contains('pesta') || svcCat.contains('ceja') || combined.contains('pesta') || combined.contains('ceja') || combined.contains('lash');
+    }
+    if (catId == 'paquete' || catId == 'paquete_bodas' || catId == 'paquete_quinceanera') {
+      return svcCat.contains('paquete') || combined.contains('paquete') || combined.contains('boda') || combined.contains('novia') || combined.contains('quince') || combined.contains('15');
+    }
+    if (catId == 'peinado' || catId == 'peinado_maquillaje') {
+      return svcCat.contains('peinado') || svcCat.contains('maquillaje') || combined.contains('peinado') || combined.contains('maquillaje') || combined.contains('makeup') || combined.contains('brushing');
+    }
+    return svcCat == catId;
+  }
+
+  String _getCategoriaLabel(String catId) {
+    final cat = _categoriasFiltro.firstWhere(
+      (c) => c['id'] == catId,
+      orElse: () => {'label': 'Servicio'},
+    );
+    return cat['label'] as String;
   }
 
   Future<void> _pickTime() async {
@@ -87,36 +114,66 @@ class _NewAppointmentDialogState extends State<NewAppointmentDialog> {
     if (t != null) {
       if (!_isHourValid(t)) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: const Text('⏰ Solo puedes agendar entre 8:00 AM y 7:00 PM'),
-            backgroundColor: AppTheme.danger,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ));
+          setState(() {
+            _errorMessage = '⏰ Horario fuera de rango: solo puedes agendar entre 8:00 AM y 7:00 PM.';
+          });
+          TopToast.show(context, message: '⏰ Horario fuera de rango (8:00 AM - 7:00 PM)', isError: true);
         }
         return;
       }
-      setState(() => _selectedTime = t);
+      setState(() {
+        _selectedTime = t;
+        _errorMessage = null;
+      });
     }
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      setState(() {
+        _errorMessage = 'Por favor completa todos los campos requeridos marcados con * (Nombre y Teléfono).';
+      });
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(0, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+      }
+      TopToast.show(context, message: 'Faltan campos obligatorios (*)', isError: true);
+      return;
+    }
+    if (_selectedCategoria == null) {
+      setState(() {
+        _errorMessage = 'Por favor selecciona primero una categoría de servicio.';
+      });
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(0, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+      }
+      TopToast.show(context, message: 'Selecciona una categoría de servicio', isError: true);
+      return;
+    }
     if (_selectedServicioId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Selecciona un servicio.')));
+      setState(() {
+        _errorMessage = 'Debes seleccionar un servicio para continuar con la cita.';
+      });
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(0, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+      }
+      TopToast.show(context, message: 'Selecciona un servicio para la cita', isError: true);
       return;
     }
     if (!_isHourValid(_selectedTime)) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: const Text('⏰ La hora debe estar entre 8:00 AM y 7:00 PM'),
-        backgroundColor: AppTheme.danger,
-        behavior: SnackBarBehavior.floating,
-      ));
+      setState(() {
+        _errorMessage = '⏰ La hora debe estar entre 8:00 AM y 7:00 PM.';
+      });
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(0, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+      }
+      TopToast.show(context, message: 'Horario permitido: 8:00 AM a 7:00 PM', isError: true);
       return;
     }
 
-    setState(() => _isSubmitting = true);
+    setState(() {
+      _isSubmitting = true;
+      _errorMessage = null;
+    });
     final fechaStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
     final horaStr =
         '${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}';
@@ -139,11 +196,19 @@ class _NewAppointmentDialogState extends State<NewAppointmentDialog> {
         _createdWhatsappUrl = result['whatsapp_url'] as String?;
         _createdClienteNombre = _nombreController.text.trim();
       });
-    } catch (e) {
-      setState(() => _isSubmitting = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.danger));
+        TopToast.show(context, message: '✅ Cita creada exitosamente', isSuccess: true, isError: false);
+      }
+    } catch (e) {
+      setState(() {
+        _isSubmitting = false;
+        _errorMessage = 'No se pudo agendar la cita. Por favor, revisa los datos e inténtalo de nuevo.';
+      });
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(0, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+      }
+      if (mounted) {
+        TopToast.show(context, message: 'No se pudo guardar la cita. Por favor, revisa los datos e inténtalo de nuevo.', isError: true);
       }
     }
   }
@@ -269,20 +334,12 @@ class _NewAppointmentDialogState extends State<NewAppointmentDialog> {
     final servicios = provider.servicios;
     final promociones = provider.promociones;
 
-    // Agrupar servicios por categoría normalizada
-    final Map<String, List<Servicio>> porCategoria = {};
-    for (final s in servicios.where((s) => s.activo)) {
-      final cat = _normalizarCategoria(s.categoria);
-      porCategoria.putIfAbsent(cat, () => []).add(s);
-    }
-    // Categorías disponibles (en orden fijo)
-    final categoriasDisponibles = _categoryMeta.keys
-        .where((k) => porCategoria.containsKey(k))
-        .toList();
-
-    // Servicios de la categoría seleccionada
-    final serviciosDeCategoria =
-        _selectedCategoria != null ? (porCategoria[_selectedCategoria] ?? []) : <Servicio>[];
+    // Servicios visibles: SOLO se muestran cuando hay una categoría seleccionada
+    final serviciosVisibles = _selectedCategoria == null
+        ? <Servicio>[]
+        : servicios
+            .where((s) => s.activo && _servicioEnCategoria(s, _selectedCategoria!))
+            .toList();
 
     // — Pantalla de éxito —
     if (_createdWhatsappUrl != null) {
@@ -339,6 +396,7 @@ class _NewAppointmentDialogState extends State<NewAppointmentDialog> {
           child: Form(
             key: _formKey,
             child: SingleChildScrollView(
+              controller: _scrollController,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -347,8 +405,13 @@ class _NewAppointmentDialogState extends State<NewAppointmentDialog> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Nueva Cita',
-                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontSize: 20)),
+                      Expanded(
+                        child: Text(
+                          'Nueva Cita',
+                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontSize: 20),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                       IconButton(
                         onPressed: () => Navigator.of(context).pop(),
                         icon: const Icon(Icons.close_rounded, color: AppTheme.textMuted),
@@ -356,6 +419,44 @@ class _NewAppointmentDialogState extends State<NewAppointmentDialog> {
                     ],
                   ),
                   const SizedBox(height: 10),
+
+                  // ── AVISO DE ERROR DESTACADO ARRIBA ──
+                  if (_errorMessage != null) ...[
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEF2F2),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFFCA5A5)),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.error_outline_rounded, color: AppTheme.danger, size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _errorMessage!,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF991B1B),
+                                fontWeight: FontWeight.bold,
+                                height: 1.3,
+                              ),
+                            ),
+                          ),
+                          InkWell(
+                            onTap: () => setState(() => _errorMessage = null),
+                            child: const Padding(
+                              padding: EdgeInsets.all(2),
+                              child: Icon(Icons.close_rounded, size: 16, color: Color(0xFF991B1B)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
 
                   // Selector de Clienta Registrada
                   Row(
@@ -423,52 +524,97 @@ class _NewAppointmentDialogState extends State<NewAppointmentDialog> {
                   const SizedBox(height: 14),
 
                   // ════════════════════════════════════════
-                  // SELECTOR DE CATEGORÍA (chips)
+                  // SELECTOR DE CATEGORÍA
                   // ════════════════════════════════════════
-                  const Text('Categoría de Servicio',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textMain)),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        '1. Elige una Categoría *',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textMain),
+                      ),
+                      if (_selectedCategoria != null)
+                        InkWell(
+                          onTap: () {
+                            setState(() {
+                              _selectedCategoria = null;
+                              _selectedServicioId = null;
+                            });
+                          },
+                          borderRadius: BorderRadius.circular(8),
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            child: Text(
+                              'Cambiar categoría',
+                              style: TextStyle(fontSize: 11, color: AppTheme.primary, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: categoriasDisponibles.map((cat) {
-                      final meta = _categoryMeta[cat]!;
-                      final isSelected = _selectedCategoria == cat;
-                      final color = meta['color'] as Color;
+                    children: _categoriasFiltro.map((cat) {
+                      final isSelected = _selectedCategoria == cat['id'];
                       return InkWell(
                         onTap: () {
                           setState(() {
-                            _selectedCategoria = cat;
-                            _selectedServicioId = null; // reset servicio
+                            if (_selectedCategoria == cat['id']) {
+                              _selectedCategoria = null;
+                              _selectedServicioId = null;
+                            } else {
+                              _selectedCategoria = cat['id'] as String;
+                              // Si el servicio actual no pertenece a la nueva categoría, deseleccionarlo
+                              if (_selectedServicioId != null) {
+                                final stillValid = servicios.any((s) =>
+                                    s.id == _selectedServicioId &&
+                                    _servicioEnCategoria(s, _selectedCategoria!));
+                                if (!stillValid) {
+                                  _selectedServicioId = null;
+                                }
+                              }
+                            }
+                            _errorMessage = null;
                           });
                         },
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(20),
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 180),
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           decoration: BoxDecoration(
-                            color: isSelected ? color : color.withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(14),
+                            color: isSelected ? AppTheme.primary : Colors.white,
+                            borderRadius: BorderRadius.circular(20),
                             border: Border.all(
-                              color: isSelected ? color : color.withValues(alpha: 0.25),
-                              width: isSelected ? 2 : 1,
+                              color: isSelected ? AppTheme.primary : AppTheme.border,
+                              width: isSelected ? 1.5 : 1,
                             ),
+                            boxShadow: isSelected
+                                ? [
+                                    BoxShadow(
+                                      color: AppTheme.primary.withOpacity(0.2),
+                                      blurRadius: 6,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ]
+                                : null,
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
-                                meta['icon'] as IconData,
+                                cat['icon'] as IconData,
                                 size: 15,
-                                color: isSelected ? Colors.white : color,
+                                color: isSelected ? Colors.white : AppTheme.secondary,
                               ),
                               const SizedBox(width: 5),
                               Text(
-                                meta['label'] as String,
+                                cat['label'] as String,
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,
-                                  color: isSelected ? Colors.white : color,
+                                  color: isSelected ? Colors.white : AppTheme.textMain,
                                 ),
                               ),
                             ],
@@ -478,60 +624,89 @@ class _NewAppointmentDialogState extends State<NewAppointmentDialog> {
                     }).toList(),
                   ),
 
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 14),
 
                   // ════════════════════════════════════════
-                  // SERVICIOS DE LA CATEGORÍA SELECCIONADA
+                  // SERVICIOS DISPONIBLES (Solo al elegir categoría)
                   // ════════════════════════════════════════
                   if (_selectedCategoria == null)
                     Container(
-                      padding: const EdgeInsets.all(14),
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF8F9FF),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppTheme.border),
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: AppTheme.border.withOpacity(0.7)),
                       ),
                       child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.touch_app_rounded, size: 18, color: AppTheme.textMuted),
+                          Icon(Icons.touch_app_outlined, size: 18, color: AppTheme.primary),
                           SizedBox(width: 8),
-                          Text('Selecciona una categoría arriba',
-                              style: TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+                          Flexible(
+                            child: Text(
+                              'Toca una categoría arriba para ver sus servicios disponibles.',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: AppTheme.textMuted,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     )
-                  else if (serviciosDeCategoria.isEmpty)
+                  else if (serviciosVisibles.isEmpty)
                     Container(
-                      padding: const EdgeInsets.all(14),
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFEF3C7),
+                        color: const Color(0xFFF9FAFB),
                         borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppTheme.border),
                       ),
-                      child: const Text('No hay servicios en esta categoría.',
-                          style: TextStyle(fontSize: 12, color: Color(0xFFB45309))),
+                      child: const Center(
+                        child: Text(
+                          'No hay servicios registrados en esta categoría.',
+                          style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                        ),
+                      ),
                     )
                   else
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Banner especial para color
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.check_circle_outline_rounded, size: 15, color: AppTheme.primary),
+                              const SizedBox(width: 6),
+                              Text(
+                                '2. Servicios de ${_getCategoriaLabel(_selectedCategoria!)} *',
+                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textMain),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Banner informativo para colorimetría (en paleta magenta de marca)
                         if (_selectedCategoria == 'color')
                           Container(
                             margin: const EdgeInsets.only(bottom: 8),
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                             decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                  colors: [Color(0xFF7C3AED), Color(0xFFBE185D)]),
+                              color: const Color(0xFFFDF2F8),
                               borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: AppTheme.primaryLight),
                             ),
                             child: const Row(
                               children: [
-                                Icon(Icons.palette_rounded, color: Colors.white, size: 14),
+                                Icon(Icons.palette_rounded, color: AppTheme.primary, size: 14),
                                 SizedBox(width: 6),
                                 Expanded(
                                   child: Text(
-                                    '💡 Color: el precio se calcula con la Calculadora después del servicio',
-                                    style: TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold),
+                                    '💡 Colorimetría: el valor final se calcula con la Calculadora según los gramos aplicados.',
+                                    style: TextStyle(fontSize: 10, color: AppTheme.primaryDark, fontWeight: FontWeight.bold),
                                   ),
                                 ),
                               ],
@@ -539,16 +714,15 @@ class _NewAppointmentDialogState extends State<NewAppointmentDialog> {
                           ),
 
                         // Lista de servicios como tarjetas seleccionables
-                        ...serviciosDeCategoria.map((s) {
+                        ...serviciosVisibles.map((s) {
                           final isSelected = _selectedServicioId == s.id;
-                          final catColor = (_categoryMeta[_selectedCategoria]?['color'] as Color?) ?? AppTheme.primary;
-                          final esColorSvc = _selectedCategoria == 'color';
 
                           return InkWell(
                             onTap: () {
                               setState(() {
                                 _selectedServicioId = s.id;
                                 _selectedDuracionMinutos = s.duracionMinutos;
+                                _errorMessage = null;
                               });
                             },
                             borderRadius: BorderRadius.circular(12),
@@ -557,11 +731,11 @@ class _NewAppointmentDialogState extends State<NewAppointmentDialog> {
                               margin: const EdgeInsets.only(bottom: 6),
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: isSelected ? catColor.withValues(alpha: 0.08) : Colors.white,
+                                color: isSelected ? const Color(0xFFFDF2F8) : Colors.white,
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                  color: isSelected ? catColor : AppTheme.border,
-                                  width: isSelected ? 2 : 1,
+                                  color: isSelected ? AppTheme.primary : AppTheme.border,
+                                  width: isSelected ? 1.5 : 1,
                                 ),
                               ),
                               child: Row(
@@ -572,9 +746,9 @@ class _NewAppointmentDialogState extends State<NewAppointmentDialog> {
                                     height: 20,
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
-                                      color: isSelected ? catColor : Colors.transparent,
+                                      color: isSelected ? AppTheme.primary : Colors.transparent,
                                       border: Border.all(
-                                        color: isSelected ? catColor : AppTheme.textMuted,
+                                        color: isSelected ? AppTheme.primary : AppTheme.textMuted,
                                         width: 2,
                                       ),
                                     ),
@@ -592,7 +766,7 @@ class _NewAppointmentDialogState extends State<NewAppointmentDialog> {
                                           style: TextStyle(
                                             fontWeight: FontWeight.bold,
                                             fontSize: 13,
-                                            color: isSelected ? catColor : AppTheme.textMain,
+                                            color: isSelected ? AppTheme.primaryDark : AppTheme.textMain,
                                           ),
                                         ),
                                         if (s.descripcion != null && s.descripcion!.isNotEmpty)
@@ -608,13 +782,11 @@ class _NewAppointmentDialogState extends State<NewAppointmentDialog> {
                                     children: [
                                       // Precio
                                       Text(
-                                        esColorSvc
-                                            ? 'Por cotizar'
-                                            : '\$${s.precioBase.toStringAsFixed(2)}',
-                                        style: TextStyle(
+                                        '\$${s.precioBase.toStringAsFixed(2)}',
+                                        style: const TextStyle(
                                           fontWeight: FontWeight.bold,
-                                          fontSize: 12,
-                                          color: esColorSvc ? const Color(0xFF7C3AED) : catColor,
+                                          fontSize: 13,
+                                          color: AppTheme.primary,
                                         ),
                                       ),
                                       // Duración

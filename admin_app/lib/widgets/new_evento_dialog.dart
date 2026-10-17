@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/evento_nota.dart';
 import '../providers/app_state_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/top_toast.dart';
 
 class NewEventoDialog extends StatefulWidget {
   final String initialFecha;
@@ -72,18 +73,20 @@ class _NewEventoDialogState extends State<NewEventoDialog> {
       await provider.addEventoNota(nuevoEvento);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Evento "${nuevoEvento.titulo}" anotado en la agenda.'),
-            backgroundColor: const Color(0xFF059669),
-          ),
+        TopToast.show(
+          context,
+          message: '📅 Evento "${nuevoEvento.titulo}" anotado en la agenda.',
+          isSuccess: true,
+          isError: false,
         );
         Navigator.of(context).pop();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error guardando evento: $e'), backgroundColor: AppTheme.danger),
+        TopToast.show(
+          context,
+          message: 'Error guardando evento: ${e.toString().replaceFirst("Exception: ", "")}',
+          isError: true,
         );
       }
     } finally {
@@ -109,15 +112,20 @@ class _NewEventoDialogState extends State<NewEventoDialog> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Row(
-                        children: [
-                          Icon(Icons.event_note_rounded, color: AppTheme.primary, size: 22),
-                          SizedBox(width: 8),
-                          Text(
-                            'Anotar Evento o Bloqueo',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textMain),
-                          ),
-                        ],
+                      const Expanded(
+                        child: Row(
+                          children: [
+                            Icon(Icons.event_note_rounded, color: AppTheme.primary, size: 22),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Anotar Evento o Bloqueo',
+                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textMain),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                       IconButton(
                         onPressed: () => Navigator.of(context).pop(),

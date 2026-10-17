@@ -1,4 +1,5 @@
 const { supabase } = require('../lib/supabase');
+const { sincronizarClienteDesdeCita } = require('./clientes.controller');
 
 /**
  * POST /api/citas
@@ -148,7 +149,18 @@ async function crearCita(req, res) {
       return res.status(500).json({ ok: false, error: 'Error al registrar la cita.' });
     }
 
-    // 7. Generar link directo de WhatsApp para confirmación
+    // 7. Sincronizar automáticamente en la tabla clientes (deduplicado)
+    sincronizarClienteDesdeCita({
+      nombre: cliente_nombre,
+      telefono: cliente_telefono,
+      email: cliente_email,
+      notas: notas,
+      fechaCita: fecha_cita,
+      precioFinal: precioFinal,
+      esPagado: false,
+    }).catch((e) => console.error('[sincronizarClienteDesdeCita]', e));
+
+    // 8. Generar link directo de WhatsApp para confirmación
     const mensajeWsp = encodeURIComponent(
       `¡Hola Raquel! Acabo de solicitar una cita en tu web:\n` +
       `📅 Fecha: ${fecha_cita}\n` +

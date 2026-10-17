@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/servicio.dart';
 import '../providers/app_state_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/top_toast.dart';
 
 class ServiciosTab extends StatefulWidget {
   const ServiciosTab({super.key});
@@ -24,6 +25,21 @@ class _ServiciosTabState extends State<ServiciosTab> {
     {'id': 'paquete_quinceanera', 'label': 'Quinceañeras'},
     {'id': 'pestanas_cejas', 'label': 'Pestañas & Cejas'},
   ];
+
+  bool _coincideCategoria(String svcCat, String selected) {
+    if (selected == 'all') return true;
+    final s = svcCat.toLowerCase().trim();
+    final c = selected.toLowerCase().trim();
+    if (s == c) return true;
+    if (c == 'colorimetria' && (s.contains('color') || s.contains('tinte') || s.contains('matiz') || s.contains('balayage') || s.contains('decolor'))) return true;
+    if (c == 'corte' && s.contains('corte')) return true;
+    if (c == 'tratamiento' && (s.contains('trat') || s.contains('alisad') || s.contains('keratina') || s.contains('botox'))) return true;
+    if (c == 'peinado_maquillaje' && (s.contains('peinado') || s.contains('maquillaje') || s.contains('makeup') || s.contains('brushing'))) return true;
+    if (c == 'paquete_bodas' && (s.contains('boda') || s.contains('novia'))) return true;
+    if (c == 'paquete_quinceanera' && (s.contains('quince') || s.contains('15'))) return true;
+    if (c == 'pestanas_cejas' && (s.contains('pesta') || s.contains('ceja') || s.contains('lash'))) return true;
+    return false;
+  }
 
   // --- DIÁLOGO DE NUEVO SERVICIO ---
   void _openNewServiceDialog(BuildContext context) {
@@ -112,7 +128,7 @@ class _ServiciosTabState extends State<ServiciosTab> {
                               } catch (e) {
                                 if (ctx.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.danger),
+                                    SnackBar(content: const Text('No se pudo guardar. Revisa los datos e inténtalo de nuevo.'), backgroundColor: AppTheme.danger),
                                   );
                                 }
                               }
@@ -369,7 +385,7 @@ class _ServiciosTabState extends State<ServiciosTab> {
                               } catch (e) {
                                 if (ctx.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.danger),
+                                    SnackBar(content: const Text('No se pudo guardar. Revisa los datos e inténtalo de nuevo.'), backgroundColor: AppTheme.danger),
                                   );
                                 }
                               }
@@ -428,8 +444,7 @@ class _ServiciosTabState extends State<ServiciosTab> {
     final servicios = provider.servicios;
 
     final filtered = servicios.where((s) {
-      if (_selectedCategory != 'all' && s.categoria != _selectedCategory) return false;
-      return true;
+      return _coincideCategoria(s.categoria, _selectedCategory);
     }).toList();
 
     return Scaffold(
@@ -515,14 +530,44 @@ class _ServiciosTabState extends State<ServiciosTab> {
               if (filtered.isEmpty)
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(36),
+                  padding: const EdgeInsets.all(28),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: AppTheme.border),
                   ),
-                  child: const Center(
-                    child: Text('No hay servicios en esta categoría.', style: TextStyle(fontWeight: FontWeight.bold)),
+                  child: Column(
+                    children: [
+                      const Icon(Icons.inventory_2_outlined, size: 40, color: AppTheme.textMuted),
+                      const SizedBox(height: 10),
+                      Text(
+                        servicios.isEmpty
+                            ? 'No hay servicios cargados actualmente.'
+                            : 'No hay servicios en esta categoría.',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        servicios.isEmpty
+                            ? 'Puedes cargar los 7 servicios oficiales del catálogo web.'
+                            : 'Selecciona otra categoría o toca "Todos" para ver el catálogo.',
+                        style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                        textAlign: TextAlign.center,
+                      ),
+                      if (servicios.isEmpty) ...[
+                        const SizedBox(height: 14),
+                        ElevatedButton.icon(
+                          onPressed: () async {
+                            await provider.restaurarServiciosPredeterminados();
+                            if (context.mounted) {
+                              TopToast.show(context, message: 'Servicios del catálogo cargados exitosamente', isSuccess: true);
+                            }
+                          },
+                          icon: const Icon(Icons.refresh_rounded, size: 18),
+                          label: const Text('Cargar Catálogo Oficial'),
+                        ),
+                      ],
+                    ],
                   ),
                 )
               else

@@ -9,6 +9,7 @@ import '../models/calculo_precio.dart';
 import '../models/reporte_financiero.dart';
 import '../models/galeria_item.dart';
 import '../models/curso_item.dart';
+import '../models/cliente.dart';
 import 'storage_service.dart';
 
 class ApiService {
@@ -476,5 +477,39 @@ class ApiService {
     final res = await _request('/cursos');
     final raw = res['cursos'] as List? ?? [];
     return raw.map((item) => CursoItem.fromJson(item as Map<String, dynamic>)).toList();
+  }
+
+  // --- CLIENTES ---
+  Future<List<Cliente>> getClientes([String? q]) async {
+    final query = (q != null && q.isNotEmpty) ? '?q=${Uri.encodeComponent(q)}' : '';
+    final res = await _request('/clientes$query');
+    final raw = res['clientes'] as List? ?? [];
+    return raw.map((item) => Cliente.fromJson(item as Map<String, dynamic>)).toList();
+  }
+
+  Future<Cliente> saveCliente(Cliente c) async {
+    final payload = {
+      if (c.id.isNotEmpty && !c.id.startsWith('cli_') && !c.id.startsWith('c_')) 'id': c.id,
+      'nombre': c.nombre,
+      'telefono': c.telefono,
+      'email': c.email,
+      'notas': c.notas,
+      'total_citas': c.totalCitas,
+      'total_gastado': c.totalGastado,
+      'ultima_visita': c.ultimaVisita,
+    };
+    final res = await _request('/clientes', method: 'POST', body: payload);
+    final data = res['cliente'] ?? res;
+    return Cliente.fromJson(data as Map<String, dynamic>);
+  }
+
+  Future<Cliente> updateCliente(String id, Map<String, dynamic> fields) async {
+    final res = await _request('/clientes/$id', method: 'PUT', body: fields);
+    final data = res['cliente'] ?? res;
+    return Cliente.fromJson(data as Map<String, dynamic>);
+  }
+
+  Future<void> deleteCliente(String id) async {
+    await _request('/clientes/$id', method: 'DELETE');
   }
 }

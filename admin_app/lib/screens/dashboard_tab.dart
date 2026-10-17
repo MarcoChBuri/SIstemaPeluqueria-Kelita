@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/cita.dart';
 import '../providers/app_state_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/phone_utils.dart';
 import '../widgets/edit_appointment_dialog.dart';
 import '../widgets/kpi_card.dart';
 import '../widgets/new_appointment_dialog.dart';
@@ -18,15 +19,14 @@ class DashboardTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<AppStateProvider>(context);
-    final reporte = provider.reporte;
     final citas = provider.citas;
 
     final now = DateTime.now();
     final hoyStr = DateFormat('yyyy-MM-dd').format(now);
     final mananaStr = DateFormat('yyyy-MM-dd').format(now.add(const Duration(days: 1)));
 
-    final citasHoy = citas.where((c) => c.fechaCita == hoyStr).toList();
-    final citasManana = citas.where((c) => c.fechaCita == mananaStr).toList();
+    final citasHoy = citas.where((c) => c.fechaCita == hoyStr && c.estado.toLowerCase() != 'cancelada').toList();
+    final citasManana = citas.where((c) => c.fechaCita == mananaStr && c.estado.toLowerCase() != 'cancelada').toList();
 
     final pendientesHoy = citasHoy.where((c) => c.estado == 'pendiente' || c.estado == 'confirmada').toList();
     final pendientesManana = citasManana.where((c) => c.estado == 'pendiente' || c.estado == 'confirmada').toList();
@@ -73,20 +73,11 @@ class DashboardTab extends StatelessWidget {
                         ),
                         child: Row(
                           children: [
-                            Container(
-                              width: 8,
-                              height: 8,
-                              decoration: BoxDecoration(
-                                color: provider.isBackendConnected
-                                    ? const Color(0xFF34D399)
-                                    : const Color(0xFFF87171),
-                                shape: BoxShape.circle,
-                              ),
-                            ),
+                            const Icon(Icons.spa_rounded, color: Colors.white, size: 14),
                             const SizedBox(width: 6),
-                            Text(
-                              provider.isBackendConnected ? 'WEB CONECTADA' : 'MODO LOCAL',
-                              style: const TextStyle(
+                            const Text(
+                              'KELITA BURI',
+                              style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.white,
@@ -104,7 +95,7 @@ class DashboardTab extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   const Text(
-                    '¡Hola Raquel! 💇‍♀️',
+                    '¡Hola Kelita! 💇‍♀️',
                     style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
@@ -112,9 +103,25 @@ class DashboardTab extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    'Tienes ${pendientesHoy.length} citas para HOY y ${pendientesManana.length} para MAÑANA.',
-                    style: const TextStyle(fontSize: 12, color: Colors.white70),
+                  Builder(
+                    builder: (context) {
+                      final nHoy = pendientesHoy.length;
+                      final nManana = pendientesManana.length;
+                      String texto;
+                      if (nHoy == 0 && nManana == 0) {
+                        texto = 'No tienes citas agendadas para hoy ni mañana.';
+                      } else if (nHoy > 0 && nManana == 0) {
+                        texto = 'Tienes $nHoy ${nHoy == 1 ? "cita" : "citas"} para hoy.';
+                      } else if (nHoy == 0 && nManana > 0) {
+                        texto = 'Tienes $nManana ${nManana == 1 ? "cita" : "citas"} para mañana.';
+                      } else {
+                        texto = 'Tienes $nHoy ${nHoy == 1 ? "cita" : "citas"} para hoy y $nManana para mañana.';
+                      }
+                      return Text(
+                        texto,
+                        style: const TextStyle(fontSize: 12, color: Colors.white70),
+                      );
+                    },
                   ),
                   const SizedBox(height: 14),
                   Row(
@@ -359,13 +366,13 @@ class DashboardTab extends StatelessWidget {
 
     final Color accentColor = esPagado
         ? const Color(0xFF64748B)
-        : (esColor ? const Color(0xFF7C3AED) : AppTheme.primary);
+        : (esColor ? AppTheme.primaryDark : AppTheme.primary);
     final Color accentBg = esPagado
         ? const Color(0xFFE2E8F0)
-        : (esColor ? const Color(0xFFF5F3FF) : (isHoy ? const Color(0xFFFDF2F8) : const Color(0xFFEFF4FF)));
+        : (isHoy ? const Color(0xFFFDF2F8) : const Color(0xFFEFF4FF));
     final Color accentBorder = esPagado
         ? const Color(0xFFCBD5E1)
-        : (esColor ? const Color(0xFFDDD6FE) : (isHoy ? const Color(0xFFFBCFE8) : const Color(0xFFDCE9FF)));
+        : (isHoy ? const Color(0xFFFBCFE8) : const Color(0xFFDCE9FF));
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -404,7 +411,7 @@ class DashboardTab extends StatelessWidget {
                         colors: [Color(0xFF64748B), Color(0xFF475569)],
                       )
                     : const LinearGradient(
-                        colors: [Color(0xFF7C3AED), Color(0xFFBE185D)],
+                        colors: [AppTheme.primaryDark, AppTheme.primary],
                       ),
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
               ),
@@ -499,10 +506,11 @@ class DashboardTab extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                           const SizedBox(height: 6),
-                          Row(
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 4,
                             children: [
                               StatusBadge(status: cita.estado),
-                              const SizedBox(width: 6),
                               StatusBadge(status: cita.estadoPago, isPayment: true),
                             ],
                           ),
@@ -532,151 +540,137 @@ class DashboardTab extends StatelessWidget {
   Widget _buildActionButtons(
       BuildContext context, AppStateProvider provider, Cita cita, bool esColor, bool esPagado) {
     if (esPagado) {
-      return Row(
+      return Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 9),
-              decoration: BoxDecoration(
-                color: const Color(0xFFCBD5E1).withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFF94A3B8).withValues(alpha: 0.5)),
-              ),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.check_circle_rounded, color: Color(0xFF334155), size: 16),
-                  SizedBox(width: 6),
-                  Text(
-                    'Pagado y Finalizado',
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
-                  ),
-                ],
-              ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFCBD5E1).withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFF94A3B8).withValues(alpha: 0.5)),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.check_circle_rounded, color: Color(0xFF334155), size: 15),
+                SizedBox(width: 6),
+                Text(
+                  'Pagado y Finalizado',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
+                ),
+              ],
             ),
           ),
-          const SizedBox(width: 8),
-          InkWell(
+          _buildActionBtn(
+            icon: Icons.chat_bubble_outline_rounded,
+            label: 'WhatsApp',
+            bgColor: const Color(0xFFECFDF5),
+            fgColor: const Color(0xFF059669),
             onTap: () async {
-              final cleanPhone = cita.clienteTelefono.replaceAll(RegExp(r'[^0-9]'), '');
+              final cleanPhone = formatEcuadorPhone(cita.clienteTelefono);
               final uri = Uri.parse('https://wa.me/$cleanPhone');
               if (await canLaunchUrl(uri)) {
                 await launchUrl(uri, mode: LaunchMode.externalApplication);
               }
             },
-            borderRadius: BorderRadius.circular(10),
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-              decoration: BoxDecoration(
-                color: const Color(0xFFECFDF5),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFF059669), size: 18),
-            ),
           ),
-          const SizedBox(width: 6),
-          InkWell(
+          _buildIconActionBtn(
+            icon: Icons.edit_outlined,
+            color: AppTheme.textMain,
+            bgColor: const Color(0xFFF1F5F9),
+            borderColor: const Color(0xFFE2E8F0),
+            tooltip: 'Editar Cita',
             onTap: () => showDialog(
               context: context,
               builder: (ctx) => EditAppointmentDialog(cita: cita),
-            ),
-            borderRadius: BorderRadius.circular(10),
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: const Icon(Icons.edit_outlined, color: AppTheme.textMain, size: 18),
             ),
           ),
         ],
       );
     }
 
-    return Row(
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         // WhatsApp
-        Expanded(
-          child: _buildActionBtn(
-            icon: Icons.chat_bubble_outline_rounded,
-            label: 'WhatsApp',
-            bgColor: const Color(0xFFECFDF5),
-            fgColor: const Color(0xFF059669),
-            onTap: () async {
-              final cleanPhone = cita.clienteTelefono.replaceAll(RegExp(r'[^0-9]'), '');
-              final uri = Uri.parse(
-                  'https://wa.me/$cleanPhone?text=${Uri.encodeComponent('¡Hola ${cita.clienteNombre}! Te saludamos de Peluquería Raquel para confirmar tu cita el ${cita.fechaCita} a las ${cita.horaInicio}. 🙏')}');
-              if (await canLaunchUrl(uri)) {
-                await launchUrl(uri, mode: LaunchMode.externalApplication);
-              }
-            },
-          ),
+        _buildActionBtn(
+          icon: Icons.chat_bubble_outline_rounded,
+          label: 'WhatsApp',
+          bgColor: const Color(0xFFECFDF5),
+          fgColor: const Color(0xFF059669),
+          onTap: () async {
+            final cleanPhone = formatEcuadorPhone(cita.clienteTelefono);
+            final uri = Uri.parse(
+                'https://wa.me/$cleanPhone?text=${Uri.encodeComponent('¡Hola ${cita.clienteNombre}! Te saludamos de Peluquería Raquel para confirmar tu cita el ${cita.fechaCita} a las ${cita.horaInicio}. 🙏')}');
+            if (await canLaunchUrl(uri)) {
+              await launchUrl(uri, mode: LaunchMode.externalApplication);
+            }
+          },
         ),
-        const SizedBox(width: 8),
 
         // Botón central según estado
         if (cita.estado == 'pendiente')
-          Expanded(
-            child: _buildActionBtn(
-              icon: Icons.check_circle_outline_rounded,
-              label: 'Confirmar',
-              bgColor: AppTheme.primaryLight,
-              fgColor: AppTheme.primary,
-              onTap: () => provider.updateCitaStatus(cita.id, estado: 'confirmada'),
-            ),
+          _buildActionBtn(
+            icon: Icons.check_circle_outline_rounded,
+            label: 'Confirmar',
+            bgColor: AppTheme.primaryLight,
+            fgColor: AppTheme.primary,
+            onTap: () => provider.updateCitaStatus(cita.id, estado: 'confirmada'),
           )
         else if (cita.estado == 'confirmada') ...[
           if (esColor && (cita.precioFinal == 0 || cita.precioFinal <= 0.0))
-            Expanded(
-              child: _buildActionBtn(
-                icon: Icons.calculate_rounded,
-                label: 'Calcular Precio',
-                bgColor: const Color(0xFFFFEDD5),
-                fgColor: const Color(0xFFEA580C),
-                onTap: () {
-                  onNavigateToTab?.call(4, citaParaCalcular: cita);
-                },
-              ),
+            _buildActionBtn(
+              icon: Icons.calculate_rounded,
+              label: 'Calcular Precio',
+              bgColor: const Color(0xFFFFEDD5),
+              fgColor: const Color(0xFFEA580C),
+              onTap: () {
+                onNavigateToTab?.call(4, citaParaCalcular: cita);
+              },
             )
           else ...[
-            Expanded(
-              child: _buildActionBtn(
-                icon: Icons.payments_rounded,
-                label: 'Pagado',
-                bgColor: const Color(0xFFD1FAE5),
-                fgColor: const Color(0xFF047857),
-                onTap: () => provider.updateCitaStatus(
-                  cita.id,
-                  estado: 'realizada',
-                  estadoPago: 'pagado',
-                ),
+            _buildActionBtn(
+              icon: Icons.payments_rounded,
+              label: 'Pagado',
+              bgColor: const Color(0xFFD1FAE5),
+              fgColor: const Color(0xFF047857),
+              onTap: () => provider.updateCitaStatus(
+                cita.id,
+                estado: 'realizada',
+                estadoPago: 'pagado',
               ),
             ),
-            if (esColor) ...[
-              const SizedBox(width: 6),
-              InkWell(
+            if (esColor)
+              _buildIconActionBtn(
+                icon: Icons.calculate_outlined,
+                color: AppTheme.primary,
+                bgColor: AppTheme.primaryLight,
+                borderColor: AppTheme.primaryLight,
+                tooltip: 'Recalcular fórmula',
                 onTap: () => onNavigateToTab?.call(4, citaParaCalcular: cita),
-                borderRadius: BorderRadius.circular(10),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF5F3FF),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFFDDD6FE)),
-                  ),
-                  child: const Icon(Icons.calculate_outlined, color: Color(0xFF7C3AED), size: 18),
-                ),
               ),
-            ],
           ],
-        ],
+        ] else if (cita.estado == 'calcular')
+          _buildActionBtn(
+            icon: Icons.calculate_rounded,
+            label: 'Ir a Calcular',
+            bgColor: const Color(0xFFFFEDD5),
+            fgColor: const Color(0xFFEA580C),
+            onTap: () => onNavigateToTab?.call(4, citaParaCalcular: cita),
+          ),
 
         // Botón cancelar / borrar
-        if (cita.estado == 'pendiente' || cita.estado == 'confirmada') ...[
-          const SizedBox(width: 8),
-          InkWell(
+        if (cita.estado == 'pendiente' || cita.estado == 'confirmada')
+          _buildIconActionBtn(
+            icon: Icons.cancel_outlined,
+            color: const Color(0xFFDC2626),
+            bgColor: const Color(0xFFFFE4E6),
+            tooltip: 'Gestionar Cita',
             onTap: () => showDialog(
               context: context,
               builder: (ctx) => AlertDialog(
@@ -717,34 +711,18 @@ class DashboardTab extends StatelessWidget {
                 ],
               ),
             ),
-            borderRadius: BorderRadius.circular(10),
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFE4E6),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.cancel_outlined, color: Color(0xFFDC2626), size: 18),
-            ),
           ),
-        ],
 
         // Botón editar cita (disponible siempre)
-        const SizedBox(width: 8),
-        InkWell(
+        _buildIconActionBtn(
+          icon: Icons.edit_outlined,
+          color: AppTheme.textMain,
+          bgColor: const Color(0xFFF1F5F9),
+          borderColor: const Color(0xFFE2E8F0),
+          tooltip: 'Editar Cita',
           onTap: () => showDialog(
             context: context,
             builder: (ctx) => EditAppointmentDialog(cita: cita),
-          ),
-          borderRadius: BorderRadius.circular(10),
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF1F5F9),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
-            ),
-            child: const Icon(Icons.edit_outlined, color: AppTheme.textMain, size: 18),
           ),
         ),
       ],
@@ -762,18 +740,44 @@ class DashboardTab extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(10),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: bgColor,
           borderRadius: BorderRadius.circular(10),
         ),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon, color: fgColor, size: 15),
             const SizedBox(width: 5),
             Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: fgColor)),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildIconActionBtn({
+    required IconData icon,
+    required Color color,
+    required Color bgColor,
+    Color? borderColor,
+    String? tooltip,
+    required VoidCallback onTap,
+  }) {
+    return Tooltip(
+      message: tooltip ?? '',
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(10),
+            border: borderColor != null ? Border.all(color: borderColor) : null,
+          ),
+          child: Icon(icon, color: color, size: 17),
         ),
       ),
     );

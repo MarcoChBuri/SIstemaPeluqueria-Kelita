@@ -5,6 +5,7 @@
 
 -- Limpiar tablas y tipos anteriores si existen (opcional)
 DROP TABLE IF EXISTS citas CASCADE;
+DROP TABLE IF EXISTS clientes CASCADE;
 DROP TABLE IF EXISTS promociones CASCADE;
 DROP TABLE IF EXISTS galeria_trabajos CASCADE;
 DROP TABLE IF EXISTS cursos_hotmart CASCADE;
@@ -93,7 +94,29 @@ CREATE TABLE promociones (
 COMMENT ON TABLE promociones IS 'Promociones y descuentos del mes para clientes que reserven online';
 
 
--- 4. TABLA DE CITAS / RESERVAS (Agenda de Clientes y Raquel)
+-- 4. TABLA DE CLIENTES (Directorio Sincronizado y Deduplicado)
+-- ---------------------------------------------------------
+
+CREATE TABLE clientes (
+  id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
+  nombre               TEXT NOT NULL,
+  telefono             TEXT NOT NULL,
+  telefono_normalizado TEXT UNIQUE,
+  email                TEXT,
+  notas                TEXT,
+  total_citas          INTEGER NOT NULL DEFAULT 0,
+  total_gastado        NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
+  ultima_visita        DATE,
+  activo               BOOLEAN NOT NULL DEFAULT true
+);
+
+COMMENT ON TABLE clientes IS 'Directorio de clientas con historial de citas y gastos acumulados';
+CREATE INDEX idx_clientes_telefono_norm ON clientes (telefono_normalizado);
+
+
+-- 5. TABLA DE CITAS / RESERVAS (Agenda de Clientes y Raquel)
 -- ---------------------------------------------------------
 
 CREATE TABLE citas (
@@ -253,5 +276,8 @@ INSERT INTO galeria_trabajos (titulo, categoria, imagen_url, descripcion, destac
 ('Alisado Espejo Brillo Extremo', 'Tratamientos', 'https://images.unsplash.com/photo-1595476108010-b4d1f102b1b1?auto=format&fit=crop&w=800&q=80', 'Cabello liso, sedoso y sin frizz.', true);
 
 Create table resenas (
-  id  UUID PRIMARY KEY 
+  id  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  clintes_nombre STRING NOT NULL,
+  
+
 );

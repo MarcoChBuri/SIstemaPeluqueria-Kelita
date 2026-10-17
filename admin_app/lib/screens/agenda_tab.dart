@@ -6,6 +6,7 @@ import '../models/cita.dart';
 import '../models/evento_nota.dart';
 import '../providers/app_state_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/phone_utils.dart';
 import '../widgets/edit_appointment_dialog.dart';
 import '../widgets/new_appointment_dialog.dart';
 import '../widgets/new_evento_dialog.dart';
@@ -313,7 +314,7 @@ class _AgendaTabState extends State<AgendaTab> {
                       width: 8,
                       height: 8,
                       decoration: const BoxDecoration(
-                        gradient: LinearGradient(colors: [Color(0xFFBE185D), Color(0xFF7C3AED)]),
+                        color: AppTheme.primary,
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -529,13 +530,13 @@ class _AgendaTabState extends State<AgendaTab> {
 
     final Color accentColor = esPagado
         ? const Color(0xFF64748B)
-        : (esColor ? const Color(0xFF7C3AED) : AppTheme.primary);
+        : (esColor ? AppTheme.primaryDark : AppTheme.primary);
     final Color accentBg = esPagado
         ? const Color(0xFFE2E8F0)
-        : (esColor ? const Color(0xFFF5F3FF) : const Color(0xFFFDF2F8));
+        : const Color(0xFFFDF2F8);
     final Color accentBorder = esPagado
         ? const Color(0xFFCBD5E1)
-        : (esColor ? const Color(0xFFDDD6FE) : const Color(0xFFFBCFE8));
+        : const Color(0xFFFBCFE8);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -574,7 +575,7 @@ class _AgendaTabState extends State<AgendaTab> {
                         colors: [Color(0xFF64748B), Color(0xFF475569)],
                       )
                     : const LinearGradient(
-                        colors: [Color(0xFF7C3AED), Color(0xFFBE185D)],
+                        colors: [AppTheme.primaryDark, AppTheme.primary],
                       ),
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
               ),
@@ -669,10 +670,11 @@ class _AgendaTabState extends State<AgendaTab> {
                             overflow: TextOverflow.ellipsis,
                           ),
                           const SizedBox(height: 6),
-                          Row(
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 4,
                             children: [
                               StatusBadge(status: cita.estado),
-                              const SizedBox(width: 6),
                               StatusBadge(status: cita.estadoPago, isPayment: true),
                             ],
                           ),
@@ -701,150 +703,138 @@ class _AgendaTabState extends State<AgendaTab> {
 
   Widget _buildActionButtons(
       BuildContext context, AppStateProvider provider, Cita cita, bool esColor, bool esPagado) {
-    // Si ya está pagado/realizado → mostrar badge plomito y botón WhatsApp
     if (esPagado) {
-      return Row(
+      return Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 9),
-              decoration: BoxDecoration(
-                color: const Color(0xFFCBD5E1).withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFF94A3B8).withValues(alpha: 0.5)),
-              ),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.check_circle_rounded, color: Color(0xFF334155), size: 16),
-                  SizedBox(width: 6),
-                  Text(
-                    'Pagado y Finalizado',
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
-                  ),
-                ],
-              ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFCBD5E1).withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFF94A3B8).withValues(alpha: 0.5)),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.check_circle_rounded, color: Color(0xFF334155), size: 15),
+                SizedBox(width: 6),
+                Text(
+                  'Pagado y Finalizado',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
+                ),
+              ],
             ),
           ),
-          const SizedBox(width: 8),
-          InkWell(
+          _buildActionBtn(
+            icon: Icons.chat_bubble_outline_rounded,
+            label: 'WhatsApp',
+            bgColor: const Color(0xFFECFDF5),
+            fgColor: const Color(0xFF059669),
             onTap: () async {
-              final cleanPhone = cita.clienteTelefono.replaceAll(RegExp(r'[^0-9]'), '');
+              final cleanPhone = formatEcuadorPhone(cita.clienteTelefono);
               final uri = Uri.parse('https://wa.me/$cleanPhone');
               if (await canLaunchUrl(uri)) {
                 await launchUrl(uri, mode: LaunchMode.externalApplication);
               }
             },
-            borderRadius: BorderRadius.circular(10),
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-              decoration: BoxDecoration(
-                color: const Color(0xFFECFDF5),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFF059669), size: 18),
+          ),
+          _buildIconActionBtn(
+            icon: Icons.edit_outlined,
+            color: AppTheme.textMain,
+            bgColor: const Color(0xFFF1F5F9),
+            borderColor: const Color(0xFFE2E8F0),
+            tooltip: 'Editar Cita',
+            onTap: () => showDialog(
+              context: context,
+              builder: (ctx) => EditAppointmentDialog(cita: cita),
             ),
           ),
         ],
       );
     }
 
-    return Row(
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         // WhatsApp
-        Expanded(
-          child: _buildActionBtn(
-            icon: Icons.chat_bubble_outline_rounded,
-            label: 'WhatsApp',
-            bgColor: const Color(0xFFECFDF5),
-            fgColor: const Color(0xFF059669),
-            onTap: () async {
-              final cleanPhone = cita.clienteTelefono.replaceAll(RegExp(r'[^0-9]'), '');
-              final uri = Uri.parse(
-                  'https://wa.me/$cleanPhone?text=${Uri.encodeComponent('¡Hola ${cita.clienteNombre}! Te saludamos de Peluquería Raquel para confirmar tu cita el ${cita.fechaCita} a las ${cita.horaInicio}. 🙏')}');
-              if (await canLaunchUrl(uri)) {
-                await launchUrl(uri, mode: LaunchMode.externalApplication);
-              }
-            },
-          ),
+        _buildActionBtn(
+          icon: Icons.chat_bubble_outline_rounded,
+          label: 'WhatsApp',
+          bgColor: const Color(0xFFECFDF5),
+          fgColor: const Color(0xFF059669),
+          onTap: () async {
+            final cleanPhone = formatEcuadorPhone(cita.clienteTelefono);
+            final uri = Uri.parse(
+                'https://wa.me/$cleanPhone?text=${Uri.encodeComponent('¡Hola ${cita.clienteNombre}! Te saludamos de Peluquería Raquel para confirmar tu cita el ${cita.fechaCita} a las ${cita.horaInicio}. 🙏')}');
+            if (await canLaunchUrl(uri)) {
+              await launchUrl(uri, mode: LaunchMode.externalApplication);
+            }
+          },
         ),
-        const SizedBox(width: 8),
 
         // Botón central según estado
         if (cita.estado == 'pendiente')
-          Expanded(
-            child: _buildActionBtn(
-              icon: Icons.check_circle_outline_rounded,
-              label: 'Confirmar',
-              bgColor: AppTheme.primaryLight,
-              fgColor: AppTheme.primary,
-              onTap: () => provider.updateCitaStatus(cita.id, estado: 'confirmada'),
-            ),
+          _buildActionBtn(
+            icon: Icons.check_circle_outline_rounded,
+            label: 'Confirmar',
+            bgColor: AppTheme.primaryLight,
+            fgColor: AppTheme.primary,
+            onTap: () => provider.updateCitaStatus(cita.id, estado: 'confirmada'),
           )
         else if (cita.estado == 'confirmada') ...[
-          // Si es Color y no tiene precio aún → Calcular Precio
           if (esColor && (cita.precioFinal == 0 || cita.precioFinal <= 0.0))
-            Expanded(
-              child: _buildActionBtn(
-                icon: Icons.calculate_rounded,
-                label: 'Calcular Precio',
-                bgColor: const Color(0xFFFFEDD5),
-                fgColor: const Color(0xFFEA580C),
-                onTap: () {
-                  // Va a la calculadora (tab index 4)
-                  widget.onNavigateToTab?.call(4, citaParaCalcular: cita);
-                },
-              ),
-            )
-          else ...[
-            // En vez de "Realizada", botón "Pagado"
-            Expanded(
-              child: _buildActionBtn(
-                icon: Icons.payments_rounded,
-                label: 'Pagado',
-                bgColor: const Color(0xFFD1FAE5),
-                fgColor: const Color(0xFF047857),
-                onTap: () => provider.updateCitaStatus(
-                  cita.id,
-                  estado: 'realizada',
-                  estadoPago: 'pagado',
-                ),
-              ),
-            ),
-            // Si es color y ya tiene precio, permitimos recalcular si lo desea
-            if (esColor) ...[
-              const SizedBox(width: 6),
-              InkWell(
-                onTap: () => widget.onNavigateToTab?.call(4, citaParaCalcular: cita),
-                borderRadius: BorderRadius.circular(10),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF5F3FF),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFFDDD6FE)),
-                  ),
-                  child: const Icon(Icons.calculate_outlined, color: Color(0xFF7C3AED), size: 18),
-                ),
-              ),
-            ],
-          ],
-        ]
-        else if (cita.estado == 'calcular')
-          Expanded(
-            child: _buildActionBtn(
+            _buildActionBtn(
               icon: Icons.calculate_rounded,
-              label: 'Ir a Calcular',
+              label: 'Calcular Precio',
               bgColor: const Color(0xFFFFEDD5),
               fgColor: const Color(0xFFEA580C),
-              onTap: () => widget.onNavigateToTab?.call(4, citaParaCalcular: cita),
+              onTap: () {
+                widget.onNavigateToTab?.call(4, citaParaCalcular: cita);
+              },
+            )
+          else ...[
+            _buildActionBtn(
+              icon: Icons.payments_rounded,
+              label: 'Pagado',
+              bgColor: const Color(0xFFD1FAE5),
+              fgColor: const Color(0xFF047857),
+              onTap: () => provider.updateCitaStatus(
+                cita.id,
+                estado: 'realizada',
+                estadoPago: 'pagado',
+              ),
             ),
+            if (esColor)
+              _buildIconActionBtn(
+                icon: Icons.calculate_outlined,
+                color: AppTheme.primary,
+                bgColor: AppTheme.primaryLight,
+                borderColor: AppTheme.primaryLight,
+                tooltip: 'Recalcular fórmula',
+                onTap: () => widget.onNavigateToTab?.call(4, citaParaCalcular: cita),
+              ),
+          ],
+        ] else if (cita.estado == 'calcular')
+          _buildActionBtn(
+            icon: Icons.calculate_rounded,
+            label: 'Ir a Calcular',
+            bgColor: const Color(0xFFFFEDD5),
+            fgColor: const Color(0xFFEA580C),
+            onTap: () => widget.onNavigateToTab?.call(4, citaParaCalcular: cita),
           ),
 
         // Botón cancelar / borrar
-        if (cita.estado == 'pendiente' || cita.estado == 'confirmada') ...[
-          const SizedBox(width: 8),
-          InkWell(
+        if (cita.estado == 'pendiente' || cita.estado == 'confirmada')
+          _buildIconActionBtn(
+            icon: Icons.cancel_outlined,
+            color: const Color(0xFFDC2626),
+            bgColor: const Color(0xFFFFE4E6),
+            tooltip: 'Gestionar Cita',
             onTap: () => showDialog(
               context: context,
               builder: (ctx) => AlertDialog(
@@ -885,34 +875,18 @@ class _AgendaTabState extends State<AgendaTab> {
                 ],
               ),
             ),
-            borderRadius: BorderRadius.circular(10),
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFE4E6),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.cancel_outlined, color: Color(0xFFDC2626), size: 18),
-            ),
           ),
-        ],
 
         // Botón editar cita (disponible siempre)
-        const SizedBox(width: 8),
-        InkWell(
+        _buildIconActionBtn(
+          icon: Icons.edit_outlined,
+          color: AppTheme.textMain,
+          bgColor: const Color(0xFFF1F5F9),
+          borderColor: const Color(0xFFE2E8F0),
+          tooltip: 'Editar Cita',
           onTap: () => showDialog(
             context: context,
             builder: (ctx) => EditAppointmentDialog(cita: cita),
-          ),
-          borderRadius: BorderRadius.circular(10),
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF1F5F9),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
-            ),
-            child: const Icon(Icons.edit_outlined, color: AppTheme.textMain, size: 18),
           ),
         ),
       ],
@@ -930,19 +904,44 @@ class _AgendaTabState extends State<AgendaTab> {
       onTap: onTap,
       borderRadius: BorderRadius.circular(10),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: bgColor,
           borderRadius: BorderRadius.circular(10),
         ),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon, color: fgColor, size: 15),
             const SizedBox(width: 5),
-            Text(label,
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: fgColor)),
+            Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: fgColor)),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildIconActionBtn({
+    required IconData icon,
+    required Color color,
+    required Color bgColor,
+    Color? borderColor,
+    String? tooltip,
+    required VoidCallback onTap,
+  }) {
+    return Tooltip(
+      message: tooltip ?? '',
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(10),
+            border: borderColor != null ? Border.all(color: borderColor) : null,
+          ),
+          child: Icon(icon, color: color, size: 17),
         ),
       ),
     );
@@ -956,7 +955,7 @@ class _AgendaTabState extends State<AgendaTab> {
     final esColor = _esServicioColor(cita);
     final Color barColor = esPagado
         ? const Color(0xFF64748B)
-        : (esColor ? const Color(0xFF7C3AED) : const Color(0xFFBE185D));
+        : (esColor ? AppTheme.primaryDark : AppTheme.primary);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 4),

@@ -46,7 +46,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
         _isTesting = false;
         _testSuccess = ok;
         _testStatusMessage = ok
-            ? '¡Conexión exitosa con el Backend de Raquel! 🚀'
+            ? '¡Conexión exitosa con el servidor! 🚀'
             : 'No se pudo conectar a la URL especificada. Verifica que el servidor esté activo.';
       });
     }

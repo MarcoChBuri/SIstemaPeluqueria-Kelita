@@ -191,7 +191,6 @@ class _GaleriaCursosTabState extends State<GaleriaCursosTab> with SingleTickerPr
     String categoria = 'Colorimetría';
     bool destacado = true;
     String? localBase64;
-    String? localPreviewPath;
 
     showDialog(
       context: context,
@@ -212,7 +211,6 @@ class _GaleriaCursosTabState extends State<GaleriaCursosTab> with SingleTickerPr
                   final b64 = 'data:$mime;base64,${base64Encode(bytes)}';
                   setDialogState(() {
                     localBase64 = b64;
-                    localPreviewPath = file.path;
                     urlCtrl.text = b64;
                   });
                 }
@@ -390,7 +388,7 @@ class _GaleriaCursosTabState extends State<GaleriaCursosTab> with SingleTickerPr
                               } catch (e) {
                                 if (ctx.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.danger),
+                                    SnackBar(content: const Text('No se pudo guardar. Revisa los datos e inténtalo de nuevo.'), backgroundColor: AppTheme.danger),
                                   );
                                 }
                               }

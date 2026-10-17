@@ -2,19 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  // Brand Colors
-  static const Color primary = Color(0xFFB10E6B);
-  static const Color primaryDark = Color(0xFF8A0B54);
-  static const Color primaryLight = Color(0xFFFFD9E4);
-  static const Color secondary = Color(0xFF0B1C30);
-  static const Color accentBlue = Color(0xFFD5E3FD);
-  static const Color background = Color(0xFFF8FAFC);
+  // ═══════════════════════════════════════════════════
+  // PALETA ESTRICTA: Rosa Magenta + Gris/Plomo + B&W
+  // ═══════════════════════════════════════════════════
+  static const Color primary = Color(0xFFBE185D);       // Rosa Magenta (acento principal)
+  static const Color primaryDark = Color(0xFF9D174D);    // Magenta oscuro
+  static const Color primaryLight = Color(0xFFFCE7F3);   // Rosa suave (fondos)
+  static const Color secondary = Color(0xFF374151);      // Gris oscuro (textos secundarios)
+  static const Color background = Color(0xFFF9FAFB);    // Fondo gris casi blanco
   static const Color surface = Colors.white;
-  static const Color border = Color(0xFFEFF4FF);
-  static const Color textMain = Color(0xFF0B1C30);
-  static const Color textMuted = Color(0xFF515F74);
-  static const Color success = Color(0xFF10B981);
-  static const Color warning = Color(0xFFF59E0B);
+  static const Color border = Color(0xFFE5E7EB);        // Gris bordes
+  static const Color textMain = Color(0xFF111827);       // Negro suave (textos)
+  static const Color textMuted = Color(0xFF6B7280);      // Gris plomo (secundario)
+  static const Color success = Color(0xFF059669);
+  static const Color warning = Color(0xFFD97706);
   static const Color danger = Color(0xFFE11D48);
 
   static ThemeData get lightTheme {
@@ -29,17 +30,17 @@ class AppTheme {
       ),
       scaffoldBackgroundColor: background,
       textTheme: TextTheme(
-        displayLarge: GoogleFonts.playfairDisplay(
+        displayLarge: GoogleFonts.plusJakartaSans(
           fontSize: 32,
           fontWeight: FontWeight.bold,
           color: textMain,
         ),
-        displayMedium: GoogleFonts.playfairDisplay(
+        displayMedium: GoogleFonts.plusJakartaSans(
           fontSize: 26,
           fontWeight: FontWeight.bold,
           color: textMain,
         ),
-        headlineMedium: GoogleFonts.playfairDisplay(
+        headlineMedium: GoogleFonts.plusJakartaSans(
           fontSize: 20,
           fontWeight: FontWeight.bold,
           color: textMain,
@@ -77,7 +78,7 @@ class AppTheme {
         surfaceTintColor: Colors.transparent,
         centerTitle: false,
         iconTheme: const IconThemeData(color: textMain),
-        titleTextStyle: GoogleFonts.playfairDisplay(
+        titleTextStyle: GoogleFonts.plusJakartaSans(
           fontSize: 20,
           fontWeight: FontWeight.bold,
           color: textMain,
@@ -108,7 +109,7 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: const Color(0xFFF8F9FF),
+        fillColor: const Color(0xFFF9FAFB),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -149,6 +150,12 @@ class AppTheme {
           }
           return const IconThemeData(color: textMuted, size: 22);
         }),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        elevation: 8,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       ),
     );
   }
